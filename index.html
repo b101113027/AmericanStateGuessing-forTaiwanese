@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>美國 50 州地圖測驗</title>
+<meta name="description" content="在完整的美國地圖上辨認被標示的州，輸入中文、英文或縮寫作答的互動式地理測驗。">
+<style>
+/* ============ 設計變數 ============ */
+:root {
+  color-scheme: light dark;
+  --paper: #f3eee3;
+  --card: #fffdf8;
+  --ink: #1d2733;
+  --muted: #5f6b7a;
+  --line: #ddd5c4;
+  --accent: #1d4ed8;
+  --accent-ink: #ffffff;
+  --sea: #e4ecf0;
+  --st-idle: #d2d7dd;
+  --st-target: #2563eb;
+  --st-correct: #2f9e63;
+  --st-wrong: #e2552b;
+  --st-wrong-dark: #a8330f;
+  --st-stroke: #ffffff;
+  --ok-bg: #e5f4ec;
+  --ok-ink: #14633a;
+  --bad-bg: #fdece5;
+  --bad-ink: #9a2f0e;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(20, 30, 40, .06), 0 10px 28px rgba(20, 30, 40, .07);
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+  --font-display: "Noto Serif TC", "Source Han Serif TC", "Songti TC", "PMingLiU", "Georgia", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #12161c;
+    --card: #1b212a;
+    --ink: #e8ecf1;
+    --muted: #9aa5b3;
+    --line: #2d3541;
+    --accent: #5b8cff;
+    --accent-ink: #0b1220;
+    --sea: #0f141a;
+    --st-idle: #38404b;
+    --st-target: #5b8cff;
+    --st-correct: #3fb97a;
+    --st-wrong: #f0683e;
+    --st-wrong-dark: #8f2a0c;
+    --st-stroke: #12161c;
+    --ok-bg: #16352a;
+    --ok-ink: #8fe0b4;
+    --bad-bg: #3a1f16;
+    --bad-ink: #ffb59c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .35);
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.55;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+button, input { font: inherit; color: inherit; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.wrap { width: min(1240px, 100% - 32px); margin-inline: auto; }
+
+/* ============ 按鈕 ============ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 8px 18px;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--card); cursor: pointer; font-weight: 600;
+  transition: transform .08s ease, background .15s ease, border-color .15s ease;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.big { min-height: 54px; padding: 12px 34px; font-size: 1.15rem; border-radius: 14px; }
+.btn.small { min-height: 36px; padding: 4px 12px; font-size: .9rem; font-weight: 600; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* ============ 首頁 ============ */
+#screen-start { position: relative; overflow: hidden; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px 0; }
+.hero-map { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: .55; pointer-events: none; }
+.hero-map path { fill: var(--st-idle); stroke: var(--st-stroke); stroke-width: .9; transition: fill .5s ease; }
+.hero-map path.hl { fill: var(--st-target); }
+.hero-card {
+  position: relative; z-index: 1; width: min(560px, 100% - 32px);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow);
+  padding: clamp(24px, 5vw, 44px); text-align: center;
+}
+.hero-eyebrow { margin: 0 0 6px; font-size: .8rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.hero-card h1 { margin: 0; font-family: var(--font-display); font-size: clamp(1.9rem, 6vw, 2.8rem); line-height: 1.2; letter-spacing: .02em; }
+.hero-sub { margin: 8px 0 22px; color: var(--muted); }
+.rules { list-style: none; margin: 0 0 26px; padding: 0; text-align: left; display: grid; gap: 10px; }
+.rules li { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; }
+.rules .n {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: .9rem;
+}
+.rules b { font-weight: 700; }
+.hero-foot { margin: 16px 0 0; font-size: .85rem; color: var(--muted); }
+
+/* ============ 遊戲頁 ============ */
+#screen-game { padding-bottom: 40px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; margin: 0; }
+.brand-mark { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font-size: .95rem; }
+.badge { font-family: var(--font-body); font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--st-wrong); color: #fff; }
+
+.stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow); }
+.stat-label { display: block; font-size: .75rem; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+.stat-value { display: block; font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.stat-value small { font-size: .95rem; color: var(--muted); font-weight: 600; }
+.stat.good .stat-value { color: var(--st-correct); }
+.stat.bad .stat-value { color: var(--st-wrong); }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+
+.map-card { position: relative; background: var(--sea); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+#map { display: block; width: 100%; height: auto; aspect-ratio: 960 / 600; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+#map.zoomed { touch-action: none; cursor: grab; }
+#map.dragging { cursor: grabbing; }
+.state { fill: var(--st-idle); stroke: var(--st-stroke); stroke-width: .9; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: fill .25s ease; }
+.state.st-target { fill: var(--st-target); stroke-width: 2.2; animation: pulse 1.3s ease-in-out infinite; }
+.state.st-correct { fill: var(--st-correct); }
+.state.st-wrong { fill: url(#hatch-wrong); }
+.ring { fill: none; stroke: var(--st-target); stroke-width: 3; vector-effect: non-scaling-stroke; transform-box: fill-box; transform-origin: center; animation: ring 1.3s ease-out infinite; pointer-events: none; }
+@keyframes pulse { 0%, 100% { fill-opacity: 1; } 50% { fill-opacity: .62; } }
+@keyframes ring { 0% { transform: scale(.8); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+
+.map-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; z-index: 2; }
+.map-tools .btn { background: color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter: blur(4px); }
+.map-tools .icon-btn { min-width: 36px; padding: 4px 0; font-size: 1.2rem; line-height: 1; }
+
+.legend { list-style: none; margin: 0; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .85rem; border-top: 1px solid var(--line); background: var(--card); }
+.legend li { display: flex; align-items: center; gap: 7px; }
+.sw { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0, 0, 0, .18); display: inline-block; }
+.sw-idle { background: var(--st-idle); }
+.sw-target { background: var(--st-target); }
+.sw-correct { background: var(--st-correct); }
+.sw-wrong { background: repeating-linear-gradient(45deg, var(--st-wrong) 0 3px, var(--st-wrong-dark) 3px 5px); }
+
+/* ============ 側欄 ============ */
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+.q-eyebrow { margin: 0; font-size: .8rem; font-weight: 700; letter-spacing: .12em; color: var(--accent); }
+.q-title { margin: 2px 0 6px; font-family: var(--font-display); font-size: 1.35rem; line-height: 1.3; }
+.q-hint { margin: 0 0 14px; font-size: .88rem; color: var(--muted); }
+.answer-input {
+  width: 100%; padding: 12px 14px; font-size: 1.15rem;
+  border: 2px solid var(--line); border-radius: 12px; background: var(--paper);
+}
+.answer-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+.answer-input[readonly] { opacity: .75; }
+.form-row { display: flex; gap: 10px; margin-top: 12px; }
+.form-row .primary { flex: 1; }
+.input-msg { min-height: 1.4em; margin: 8px 0 0; font-size: .85rem; color: var(--st-wrong); font-weight: 600; }
+.kbd-tip { margin: 6px 0 0; font-size: .8rem; color: var(--muted); }
+
+.feedback { margin-top: 10px; margin-bottom: 2px; display: grid; grid-template-columns: 38px 1fr; gap: 12px; padding: 14px; border-radius: 12px; animation: fadein .25s ease; }
+.feedback.ok { background: var(--ok-bg); color: var(--ok-ink); }
+.feedback.bad { background: var(--bad-bg); color: var(--bad-ink); }
+.fb-icon { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 1.25rem; font-weight: 800; color: #fff; }
+.feedback.ok .fb-icon { background: var(--st-correct); }
+.feedback.bad .fb-icon { background: var(--st-wrong); }
+.fb-title { margin: 0; font-weight: 800; font-size: 1.05rem; }
+.fb-line { margin: 2px 0 0; font-size: .92rem; }
+.fb-line b { font-weight: 700; }
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ============ 結果 ============ */
+.r-title { margin: 0; font-family: var(--font-display); font-size: 1.5rem; }
+.r-score { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 14px; }
+.r-pct { font-size: 3rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
+.r-pct-label { color: var(--muted); font-weight: 600; }
+.r-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
+.r-nums li { padding: 8px 10px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); }
+.r-nums span { display: block; font-size: .75rem; color: var(--muted); font-weight: 600; }
+.r-nums b { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.r-h { margin: 0 0 8px; font-size: 1rem; }
+.wrong-list { list-style: none; margin: 0 0 16px; padding: 0; max-height: 330px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+.wrong-list li { display: grid; gap: 2px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.wrong-list li:last-child { border-bottom: 0; }
+.w-state { font-weight: 700; }
+.w-state small { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.w-ans { font-size: .86rem; color: var(--muted); }
+.w-ans q { color: var(--st-wrong); font-weight: 600; quotes: "「" "」"; }
+.perfect { padding: 14px; border-radius: 12px; background: var(--ok-bg); color: var(--ok-ink); font-weight: 700; margin: 0 0 16px; }
+.r-actions { display: grid; gap: 10px; }
+
+noscript { display: block; padding: 24px; text-align: center; }
+
+/* ============ 響應式 ============ */
+@media (max-width: 960px) {
+  .stage { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .wrap { width: min(1240px, 100% - 20px); }
+  .topbar { padding: 10px 0; }
+  .brand { font-size: 1rem; }
+  .stats { gap: 6px; }
+  .stat { padding: 6px 4px; text-align: center; border-radius: 10px; }
+  .stat-label { font-size: .66rem; letter-spacing: 0; }
+  .stat-value { font-size: 1.05rem; }
+  .stat-value small { font-size: .72rem; }
+  .map-tools { top: 6px; right: 6px; gap: 4px; }
+  .map-tools .btn.small { padding: 2px 8px; min-height: 32px; font-size: .8rem; }
+  .map-tools .icon-btn { min-width: 32px; }
+  .legend { font-size: .76rem; gap: 6px 12px; padding: 8px 10px; }
+  .sw { width: 14px; height: 14px; }
+  .panel { padding: 16px; }
+  .q-title { font-size: 1.2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<noscript>此遊戲需要啟用 JavaScript 才能執行。</noscript>
+
+<!-- ================= 首頁 ================= -->
+<section id="screen-start">
+  <svg id="hero-map" class="hero-map" viewBox="0 0 960 600" aria-hidden="true" focusable="false"></svg>
+  <div class="hero-card">
+    <p class="hero-eyebrow">USA 50 States Map Quiz</p>
+    <h1>美國 50 州地圖測驗</h1>
+    <p class="hero-sub">看地圖，認出每一州。</p>
+    <ol class="rules">
+      <li><span class="n">1</span><span>地圖上會有<b>一個州以藍色標示</b>，共 51 題（50 州加華盛頓特區 DC），順序隨機。</span></li>
+      <li><span class="n">2</span><span>輸入州名即可作答：<b>英文全名</b>、<b>縮寫</b>（如 CA）或<b>中文</b>（如 加州）都可以。</span></li>
+      <li><span class="n">3</span><span>每州<b>只有一次機會</b>。答對轉綠色、答錯轉紅色斜線，全部完成後看成績與錯題。</span></li>
+    </ol>
+    <button id="btn-start" class="btn primary big" type="button">開始遊戲</button>
+    <p class="hero-foot">不需安裝，也不需要網路連線。</p>
+  </div>
+</section>
+
+<!-- ================= 遊戲 ================= -->
+<section id="screen-game" hidden>
+  <div class="wrap">
+    <header class="topbar">
+      <p class="brand"><span class="brand-mark" aria-hidden="true">★</span>美國 50 州＋DC 測驗 <span id="mode-badge" class="badge" hidden>錯題重練</span></p>
+      <button id="btn-restart-top" class="btn small" type="button">重新開始</button>
+    </header>
+
+    <ul class="stats" aria-label="作答進度">
+      <li class="stat"><span class="stat-label">題號</span><span class="stat-value"><span id="st-q">1</span><small>/<span id="st-total">51</span></small></span></li>
+      <li class="stat"><span class="stat-label">已完成</span><span class="stat-value" id="st-done">0</span></li>
+      <li class="stat good"><span class="stat-label">答對</span><span class="stat-value" id="st-correct">0</span></li>
+      <li class="stat bad"><span class="stat-label">答錯</span><span class="stat-value" id="st-wrong">0</span></li>
+      <li class="stat"><span class="stat-label">正確率</span><span class="stat-value" id="st-rate">—</span></li>
+    </ul>
+
+    <div class="stage">
+      <div class="map-card">
+        <div class="map-tools">
+          <button id="btn-zoom-target" class="btn small" type="button" title="放大到目前題目所在位置">放大目標</button>
+          <button id="btn-zoom-in" class="btn small icon-btn" type="button" aria-label="放大地圖">＋</button>
+          <button id="btn-zoom-out" class="btn small icon-btn" type="button" aria-label="縮小地圖">－</button>
+          <button id="btn-zoom-reset" class="btn small" type="button" title="回到完整地圖">重設</button>
+        </div>
+        <svg id="map" viewBox="0 0 960 600" role="img" aria-label="美國 50 州與華盛頓特區地圖，其中一個區域以藍色標示為本題目標">
+          <defs>
+            <pattern id="hatch-wrong" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+              <rect width="7" height="7" style="fill: var(--st-wrong)"></rect>
+              <line x1="0" y1="0" x2="0" y2="7" style="stroke: var(--st-wrong-dark)" stroke-width="2.6"></line>
+            </pattern>
+          </defs>
+          <g id="states"></g>
+          <g id="markers"></g>
+        </svg>
+        <ul class="legend" aria-label="顏色圖例">
+          <li><i class="sw sw-idle"></i>尚未作答</li>
+          <li><i class="sw sw-target"></i>目前題目</li>
+          <li><i class="sw sw-correct"></i>答對</li>
+          <li><i class="sw sw-wrong"></i>答錯（斜線）</li>
+        </ul>
+      </div>
+
+      <aside class="panel">
+        <!-- 作答 -->
+        <div id="panel-quiz">
+          <p class="q-eyebrow">第 <span id="q-num">1</span> 題</p>
+          <h2 class="q-title">地圖上藍色標示的是哪一州？</h2>
+          <p class="q-hint">可輸入英文全名、縮寫（CA）或中文（加州）。華盛頓特區請輸入 DC 或 Washington DC。</p>
+          <form id="answer-form" autocomplete="off" novalidate>
+            <label for="answer" class="sr-only">你的答案</label>
+            <input id="answer" class="answer-input" type="text" name="answer" maxlength="40"
+                   autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+                   enterkeyhint="send" placeholder="輸入州名…">
+            <p id="input-msg" class="input-msg" role="alert"></p>
+            <div id="feedback" class="feedback" role="status" aria-live="polite" hidden>
+              <span id="fb-icon" class="fb-icon" aria-hidden="true"></span>
+              <div>
+                <p id="fb-title" class="fb-title"></p>
+                <p id="fb-line1" class="fb-line"></p>
+                <p id="fb-line2" class="fb-line"></p>
+              </div>
+            </div>
+            <div class="form-row">
+              <button id="btn-main" class="btn primary" type="button">提交答案</button>
+              <button id="btn-skip" class="btn" type="button">不知道</button>
+            </div>
+            <p id="kbd-tip" class="kbd-tip">按 Enter 提交；作答後再按 Enter 進入下一題。</p>
+          </form>
+        </div>
+
+        <!-- 成績 -->
+        <div id="panel-result" hidden>
+          <h2 class="r-title" id="r-title">測驗完成</h2>
+          <div class="r-score"><span class="r-pct" id="r-pct">0%</span><span class="r-pct-label">正確率</span></div>
+          <ul class="r-nums">
+            <li><span>答對</span><b id="r-correct">0</b></li>
+            <li><span>答錯</span><b id="r-wrong">0</b></li>
+            <li><span>總題數</span><b id="r-total">0</b></li>
+          </ul>
+          <p id="r-perfect" class="perfect" hidden>全部答對！你對美國地圖了如指掌。</p>
+          <div id="r-wrong-wrap">
+            <h3 class="r-h">答錯的州（<span id="r-wrong-n">0</span>）</h3>
+            <ol id="r-wrong-list" class="wrong-list"></ol>
+          </div>
+          <div class="r-actions">
+            <button id="btn-retry" class="btn primary" type="button">錯題重練</button>
+            <button id="btn-restart" class="btn" type="button">重新開始（全部 51 題）</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<script>
+'use strict';
+
+/* =====================================================================
+ * 一、州資料
+ *   id      : 郵政縮寫（同時作為 SVG 區域識別碼 state-XX 的後綴）
+ *   en / zh : 英文正式名 / 中文正式名
+ *   alias   : 其他可接受答案（英文縮寫、舊式縮寫、中文簡稱、兩岸譯名等）
+ *   答案比對採「完全相符」，不使用模糊相似度。
+ * ===================================================================== */
+const STATE_DATA = [
+  { id: 'AL', en: 'Alabama',        zh: '阿拉巴馬州',     alias: ['Ala', '阿拉巴馬'] },
+  { id: 'AK', en: 'Alaska',         zh: '阿拉斯加州',     alias: ['阿拉斯加'] },
+  { id: 'AZ', en: 'Arizona',        zh: '亞利桑那州',     alias: ['Ariz', '亞利桑那', '亞利桑納', '亞歷桑那'] },
+  { id: 'AR', en: 'Arkansas',       zh: '阿肯色州',       alias: ['Ark', '阿肯色'] },
+  { id: 'CA', en: 'California',     zh: '加利福尼亞州',   alias: ['Calif', 'Cal', 'Cali', '加州', '加利福尼亞'] },
+  { id: 'CO', en: 'Colorado',       zh: '科羅拉多州',     alias: ['Colo', '科羅拉多'] },
+  { id: 'CT', en: 'Connecticut',    zh: '康乃狄克州',     alias: ['Conn', '康乃狄克', '康乃迪克', '康涅狄格', '康涅狄格州'] },
+  { id: 'DE', en: 'Delaware',       zh: '德拉瓦州',       alias: ['Del', '德拉瓦', '德拉華', '特拉華', '特拉華州'] },
+  { id: 'FL', en: 'Florida',        zh: '佛羅里達州',     alias: ['Fla', '佛州', '佛羅里達', '佛羅裡達', '弗羅里達', '佛罗里达'] },
+  { id: 'GA', en: 'Georgia',        zh: '喬治亞州',       alias: ['喬治亞', '佐治亞', '佐治亞州'] },
+  { id: 'HI', en: 'Hawaii',         zh: '夏威夷州',       alias: ['夏威夷'] },
+  { id: 'ID', en: 'Idaho',          zh: '愛達荷州',       alias: ['愛達荷', '艾達荷', '艾達荷州'] },
+  { id: 'IL', en: 'Illinois',       zh: '伊利諾州',       alias: ['Ill', '伊利諾', '伊利諾伊', '伊利諾伊州'] },
+  { id: 'IN', en: 'Indiana',        zh: '印第安納州',     alias: ['Ind', '印第安納', '印第安那', '印地安那', '印地安那州'] },
+  { id: 'IA', en: 'Iowa',           zh: '愛荷華州',       alias: ['愛荷華', '艾奧瓦', '艾奧瓦州', '愛阿華'] },
+  { id: 'KS', en: 'Kansas',         zh: '堪薩斯州',       alias: ['Kan', 'Kans', '堪薩斯'] },
+  { id: 'KY', en: 'Kentucky',       zh: '肯塔基州',       alias: ['肯塔基'] },
+  { id: 'LA', en: 'Louisiana',      zh: '路易斯安那州',   alias: ['路易斯安那', '路易斯安納', '路易斯安納州'] },
+  { id: 'ME', en: 'Maine',          zh: '緬因州',         alias: ['緬因'] },
+  { id: 'MD', en: 'Maryland',       zh: '馬里蘭州',       alias: ['馬里蘭', '馬利蘭', '馬利蘭州', '馬裡蘭'] },
+  { id: 'MA', en: 'Massachusetts',  zh: '麻薩諸塞州',     alias: ['Mass', '麻州', '麻省', '麻薩諸塞', '馬薩諸塞', '馬薩諸塞州'] },
+  { id: 'MI', en: 'Michigan',       zh: '密西根州',       alias: ['Mich', '密西根', '密歇根', '密歇根州'] },
+  { id: 'MN', en: 'Minnesota',      zh: '明尼蘇達州',     alias: ['Minn', '明尼蘇達', '明尼蘇打', '明尼蘇打州'] },
+  { id: 'MS', en: 'Mississippi',    zh: '密西西比州',     alias: ['Miss', '密西西比'] },
+  { id: 'MO', en: 'Missouri',       zh: '密蘇里州',       alias: ['密蘇里'] },
+  { id: 'MT', en: 'Montana',        zh: '蒙大拿州',       alias: ['Mont', '蒙大拿'] },
+  { id: 'NE', en: 'Nebraska',       zh: '內布拉斯加州',   alias: ['Neb', 'Nebr', '內布拉斯加', '內伯拉斯加', '內伯拉斯加州'] },
+  { id: 'NV', en: 'Nevada',         zh: '內華達州',       alias: ['Nev', '內華達'] },
+  { id: 'NH', en: 'New Hampshire',  zh: '新罕布夏州',     alias: ['N.H.', '新罕布夏', '新罕布什爾', '新罕布什爾州'] },
+  { id: 'NJ', en: 'New Jersey',     zh: '紐澤西州',       alias: ['N.J.', '紐澤西', '新澤西', '新澤西州'] },
+  { id: 'NM', en: 'New Mexico',     zh: '新墨西哥州',     alias: ['N.M.', 'N.Mex', '新墨西哥'] },
+  { id: 'NY', en: 'New York',       zh: '紐約州',         alias: ['N.Y.', '紐約'] },
+  { id: 'NC', en: 'North Carolina', zh: '北卡羅來納州',   alias: ['N.C.', '北卡', '北卡州', '北卡羅來納', '北卡羅萊納', '北卡羅萊納州'] },
+  { id: 'ND', en: 'North Dakota',   zh: '北達科他州',     alias: ['N.D.', 'N.Dak', '北達科他', '北達科塔', '北達科塔州', '北達柯他'] },
+  { id: 'OH', en: 'Ohio',           zh: '俄亥俄州',       alias: ['俄亥俄'] },
+  { id: 'OK', en: 'Oklahoma',       zh: '奧克拉荷馬州',   alias: ['Okla', '奧克拉荷馬', '奧克拉何馬', '奧克拉何馬州'] },
+  { id: 'OR', en: 'Oregon',         zh: '奧勒岡州',       alias: ['Ore', 'Oreg', '奧勒岡', '俄勒岡', '俄勒岡州'] },
+  { id: 'PA', en: 'Pennsylvania',   zh: '賓夕法尼亞州',   alias: ['Penn', 'Penna', '賓州', '賓夕法尼亞', '賓夕凡尼亞', '賓夕凡尼亞州'] },
+  { id: 'RI', en: 'Rhode Island',   zh: '羅德島州',       alias: ['R.I.', '羅德島'] },
+  { id: 'SC', en: 'South Carolina', zh: '南卡羅來納州',   alias: ['S.C.', '南卡', '南卡州', '南卡羅來納', '南卡羅萊納', '南卡羅萊納州'] },
+  { id: 'SD', en: 'South Dakota',   zh: '南達科他州',     alias: ['S.D.', 'S.Dak', '南達科他', '南達科塔', '南達科塔州', '南達柯他'] },
+  { id: 'TN', en: 'Tennessee',      zh: '田納西州',       alias: ['Tenn', '田納西'] },
+  { id: 'TX', en: 'Texas',          zh: '德克薩斯州',     alias: ['Tex', '德州', '德克薩斯', '得克薩斯', '得克薩斯州'] },
+  { id: 'UT', en: 'Utah',           zh: '猶他州',         alias: ['猶他'] },
+  { id: 'VT', en: 'Vermont',        zh: '佛蒙特州',       alias: ['佛蒙特'] },
+  { id: 'VA', en: 'Virginia',       zh: '維吉尼亞州',     alias: ['維吉尼亞', '弗吉尼亞', '弗吉尼亞州'] },
+  { id: 'WA', en: 'Washington',     zh: '華盛頓州',       alias: ['Wash', 'Washington State', '華盛頓'] },
+  { id: 'WV', en: 'West Virginia',  zh: '西維吉尼亞州',   alias: ['W.Va.', 'W.V.', '西維吉尼亞', '西弗吉尼亞', '西弗吉尼亞州'] },
+  { id: 'WI', en: 'Wisconsin',      zh: '威斯康辛州',     alias: ['Wis', 'Wisc', '威斯康辛', '威斯康星', '威斯康星州'] },
+  { id: 'WY', en: 'Wyoming',        zh: '懷俄明州',       alias: ['Wyo', '懷俄明'] },
+  /* 華盛頓特區（非州，作為第 51 題）。注意：「Washington」「華盛頓」單獨輸入仍屬華盛頓州 */
+  { id: 'DC', en: 'District of Columbia', zh: '華盛頓特區', alias: ['D.C.', 'Washington DC', 'Washington D.C.', 'Washington, D.C.', 'Washington DC.', 'DC特區', '華盛頓DC', '華盛頓哥倫比亞特區', '哥倫比亞特區', '華府'] }
+];
+
+/* 各州 SVG 路徑（Albers 投影，阿拉斯加與夏威夷已移至左下角，畫布 960×600） */
+const MAP_PATHS = {"Alabama":"M644.7,366.2L676.0,363.4L681.2,382.1L688.9,409.6L691.7,415.5L694.1,418.8L693.6,421.0L695.8,422.1L693.0,425.2L693.4,428.0L692.2,431.9L694.8,438.4L694.2,444.3L696.9,450.1L687.7,451.3L648.2,455.2L647.9,458.2L652.5,462.0L652.1,465.7L653.7,467.4L651.2,470.9L648.6,471.8L643.6,468.6L642.6,463.2L641.1,462.8L639.7,467.0L639.4,471.0L634.4,470.4L630.3,436.7L631.1,394.3L631.7,369.8L629.6,367.6L644.7,366.2Z","Alaska":"M275.5,559.1L275.2,557.8L276.3,558.2L276.6,559.5L275.5,559.7L275.5,559.1ZM273.7,557.1L274.8,557.8L274.8,559.2L274.3,558.9L273.7,557.1ZM266.5,551.3L267.5,550.8L268.0,551.0L268.2,552.1L267.4,552.6L266.4,552.2L266.5,551.3ZM264.2,552.8L266.1,552.4L267.0,553.7L269.3,554.7L270.2,555.4L270.5,556.2L271.0,556.2L271.4,557.3L272.5,558.1L272.9,559.0L273.3,558.5L273.7,559.2L274.8,562.0L274.7,562.7L273.5,563.0L272.7,561.7L272.3,561.9L271.1,561.1L271.0,561.6L270.1,561.4L270.6,562.5L271.2,562.0L271.8,562.2L272.0,563.8L271.2,563.9L269.3,562.4L268.7,561.6L268.4,560.5L267.5,560.9L267.2,560.2L267.9,559.8L268.4,558.9L267.7,557.8L266.8,557.9L266.0,556.0L265.4,555.1L265.0,556.0L264.5,554.9L264.9,554.2L264.0,553.1L264.2,552.8ZM265.5,558.8L266.4,559.0L266.8,558.3L267.4,558.4L267.2,559.6L266.2,559.6L265.5,558.8ZM261.6,548.9L260.8,548.3L261.3,547.6L263.7,547.6L264.7,547.3L265.8,548.4L267.4,549.1L267.6,550.0L267.0,550.7L266.1,550.8L265.6,551.5L264.6,551.5L263.7,552.1L263.0,550.4L262.7,549.3L262.0,549.5L261.6,548.9ZM261.8,552.4L261.1,552.1L260.1,551.0L259.7,550.1L260.1,549.5L260.7,549.8L260.6,549.0L262.6,549.8L263.2,551.1L262.7,551.4L262.8,553.0L263.3,553.3L263.3,555.1L262.6,555.0L262.8,556.0L262.3,555.6L261.4,553.6L261.8,552.4ZM260.1,554.6L260.2,555.4L259.5,555.1L257.0,552.3L255.8,551.6L255.9,550.7L255.0,548.9L253.5,547.7L254.2,546.0L254.8,546.4L255.9,546.6L256.8,546.5L257.1,547.7L259.1,551.3L260.1,554.6ZM255.5,540.3L257.0,540.4L257.7,540.1L257.9,540.7L259.6,542.4L258.7,542.3L258.8,543.0L259.9,543.8L260.8,545.6L260.1,546.4L260.0,547.1L259.0,548.9L258.6,549.0L258.0,547.6L258.0,546.6L257.5,545.4L256.6,544.0L256.4,543.2L255.5,541.3L254.7,540.6L254.2,539.2L255.5,540.3ZM252.9,548.2L253.5,548.1L254.5,549.2L254.5,550.2L253.6,550.7L253.3,549.2L252.9,548.2ZM249.4,542.1L250.6,541.8L251.2,541.0L252.6,541.6L252.3,542.7L252.6,543.0L252.8,541.8L254.3,541.7L255.3,542.3L255.3,543.9L255.6,543.9L256.7,545.8L255.7,546.3L253.3,545.3L253.8,546.9L253.4,547.8L252.6,547.7L251.9,546.8L250.9,546.3L249.9,545.0L248.9,544.6L248.6,543.4L249.0,542.9L248.9,541.8L249.4,542.1ZM204.8,534.8L203.4,536.9L203.3,537.7L202.1,538.3L202.2,537.1L203.5,535.8L204.2,534.3L204.8,534.8ZM202.7,532.1L202.6,533.7L202.2,535.4L201.4,534.9L201.9,533.0L202.7,532.1ZM194.9,458.0L195.2,458.3L196.6,458.5L197.3,458.2L198.3,458.1L199.4,458.3L200.0,458.0L200.7,458.6L202.0,459.1L203.5,459.1L203.9,458.6L204.9,458.2L205.2,457.6L206.3,457.4L206.3,457.7L207.0,457.4L208.4,457.8L209.5,458.6L210.4,458.9L210.7,459.2L211.5,459.2L212.4,459.7L212.6,460.1L213.0,459.7L213.6,459.9L227.6,530.6L229.5,530.8L229.6,530.1L231.6,530.7L232.4,529.3L234.7,528.6L234.7,530.8L235.4,531.3L236.9,531.7L237.4,532.7L242.3,535.7L243.5,538.1L244.0,537.2L245.4,535.6L246.3,535.3L246.5,534.3L246.1,532.9L246.8,532.7L246.6,531.5L247.7,530.9L249.2,529.4L251.4,530.6L251.5,531.7L252.2,532.7L253.3,532.6L255.0,533.9L255.0,534.3L255.8,535.0L257.7,535.5L261.6,538.9L262.4,539.9L263.6,540.8L265.6,542.9L267.5,544.6L267.4,545.7L268.7,545.6L268.9,546.9L270.1,547.1L270.7,548.5L271.7,548.1L274.2,548.9L275.6,548.8L276.5,549.2L277.2,549.2L277.6,549.9L279.0,549.6L279.7,550.3L279.7,552.1L280.3,553.5L281.7,555.5L281.5,556.2L281.3,558.6L280.3,560.6L279.6,560.0L279.2,560.4L278.2,559.1L278.1,558.4L277.4,557.8L278.1,556.6L277.7,556.5L277.1,557.8L276.3,557.3L275.9,557.9L273.6,556.9L273.6,555.0L272.7,555.9L273.0,556.8L271.9,556.4L271.4,555.7L271.7,554.5L271.2,553.7L270.6,554.7L269.3,553.3L268.9,553.8L268.1,552.6L268.6,551.4L269.3,551.2L268.8,550.2L268.7,548.6L268.1,548.9L266.4,548.1L265.0,546.9L262.6,546.6L261.7,543.6L260.9,543.4L260.7,542.2L259.9,542.1L258.4,540.8L257.8,540.0L256.0,540.2L253.5,538.6L251.2,533.7L251.2,535.0L251.6,536.0L253.0,537.8L252.9,538.2L253.9,539.7L254.1,540.8L253.3,540.8L252.3,539.8L251.5,539.8L250.5,540.4L250.0,538.7L248.9,537.4L248.4,538.0L245.6,537.1L245.5,537.6L247.0,537.7L248.3,538.7L248.7,538.6L249.1,539.6L250.0,540.6L248.8,541.6L247.9,541.4L248.2,542.4L246.9,541.9L246.4,541.4L245.8,541.6L243.6,540.6L242.0,539.6L241.7,538.8L240.7,537.9L238.5,537.5L237.2,536.9L235.1,536.3L233.6,535.6L233.5,534.6L233.9,534.8L234.2,534.1L233.5,532.7L233.8,531.7L233.5,531.4L232.9,533.2L231.1,534.7L228.7,534.8L226.6,534.2L226.4,533.4L225.5,533.8L224.4,533.4L222.1,533.3L220.9,533.5L218.1,534.4L217.1,534.8L215.7,533.9L214.0,533.7L213.4,533.0L213.1,531.9L212.0,532.2L211.7,533.2L209.6,532.1L209.2,531.6L207.4,532.9L206.5,534.3L206.0,533.2L206.3,532.4L206.9,532.5L208.7,531.4L208.4,530.8L207.5,531.2L207.1,530.4L206.3,530.4L205.2,528.2L205.0,528.8L203.8,529.2L203.4,528.9L203.1,529.7L201.7,529.6L201.7,530.4L200.8,530.7L200.3,530.4L200.5,529.0L200.1,529.1L199.5,530.6L200.5,531.1L200.7,532.2L201.3,533.3L201.1,534.6L200.4,534.2L200.2,534.9L200.9,535.1L201.5,536.7L200.5,537.2L199.9,536.9L199.0,537.4L198.5,537.1L197.3,537.2L197.3,536.6L196.8,537.0L196.5,537.9L196.0,537.2L195.4,538.2L195.7,538.7L194.9,539.3L194.1,539.5L193.8,540.3L193.0,541.1L192.4,540.8L191.7,541.7L191.2,541.7L190.2,543.5L189.0,543.7L188.6,543.1L187.9,544.1L186.3,543.4L186.6,542.1L187.6,541.6L188.2,541.7L188.4,541.2L189.5,540.1L189.5,539.2L188.1,540.4L186.8,539.8L186.6,539.3L187.2,537.4L188.2,535.9L188.3,534.8L188.6,534.6L188.7,533.3L188.1,532.0L189.4,531.4L191.8,529.3L192.4,530.1L193.2,530.2L194.2,529.4L192.9,528.4L192.4,527.6L191.4,527.7L190.7,527.4L190.5,527.7L189.4,528.4L188.9,529.4L187.8,529.7L186.6,531.0L186.5,531.8L185.6,532.3L185.4,533.2L184.8,533.7L184.5,535.3L183.2,536.4L183.9,537.2L183.4,538.4L182.1,538.6L182.0,540.1L180.9,540.7L180.5,540.1L180.0,541.3L179.3,541.3L179.4,542.2L177.9,542.7L177.6,545.0L179.3,545.1L180.7,545.8L181.1,546.5L180.6,547.8L179.6,548.5L178.8,548.6L178.7,549.2L178.1,549.5L178.4,550.4L177.8,551.6L176.5,552.8L175.7,552.8L175.0,553.2L174.3,553.1L173.8,553.6L173.9,554.2L172.9,554.5L172.7,555.5L172.0,554.9L171.2,556.7L169.9,556.5L170.0,557.5L169.2,557.2L168.6,557.6L168.6,558.9L167.6,560.9L166.2,561.1L165.0,562.0L164.8,562.5L164.1,561.7L162.8,563.6L162.5,563.1L161.8,563.2L161.5,564.3L160.8,564.7L159.9,564.4L159.2,565.5L160.3,565.9L158.9,568.3L155.1,568.8L153.9,570.9L153.7,570.4L153.9,569.0L153.2,568.8L152.2,569.2L152.0,569.7L150.5,570.5L149.8,571.4L149.7,570.7L149.2,571.5L148.4,570.9L146.7,572.0L145.5,571.8L145.8,570.8L145.3,569.8L144.8,570.5L144.7,571.4L142.8,573.8L142.3,573.1L142.0,574.0L141.0,573.7L141.0,572.2L140.4,571.7L140.1,572.3L140.6,573.0L140.1,574.0L139.2,574.5L138.7,573.2L137.9,573.0L137.6,573.4L138.4,574.2L136.7,575.1L137.7,575.5L137.7,576.0L136.9,575.5L135.6,576.4L133.4,576.0L132.2,576.5L132.0,577.0L130.6,577.4L129.8,577.0L129.7,575.6L130.7,575.2L131.6,573.6L132.6,573.7L134.7,572.9L136.3,573.1L136.7,574.3L137.3,573.6L137.3,572.6L138.3,572.3L139.3,572.5L140.9,570.6L142.6,569.0L144.6,567.6L146.9,567.2L147.8,567.6L148.8,567.2L148.9,567.9L148.3,568.6L148.8,569.3L149.1,568.4L150.2,568.4L150.5,569.0L151.1,569.3L151.2,568.6L150.1,567.8L150.1,567.4L151.0,565.5L152.1,564.5L153.6,563.5L155.8,562.7L157.5,561.4L158.2,562.0L158.8,561.8L158.6,560.9L158.8,560.1L160.1,558.4L161.8,557.3L163.1,555.9L163.1,555.0L164.4,549.1L166.1,547.5L165.9,546.2L162.2,547.9L161.0,547.6L160.8,546.8L160.2,546.4L160.0,545.6L159.4,545.9L158.9,547.2L159.4,548.9L158.6,549.5L157.9,549.2L156.8,546.5L156.1,545.1L155.6,545.1L155.2,546.0L154.8,546.2L154.3,545.3L153.6,545.1L153.4,543.8L151.1,545.0L149.1,545.9L148.9,546.5L147.3,547.2L146.6,546.3L147.4,545.4L147.4,543.2L147.2,540.8L148.3,540.0L147.7,537.9L147.2,536.8L146.8,535.1L146.1,534.3L145.7,535.7L144.7,535.9L143.0,536.5L141.1,536.6L140.0,536.4L139.2,535.8L139.3,534.6L138.6,534.1L137.7,532.2L136.8,531.7L135.9,529.7L136.9,529.0L137.3,527.4L136.6,527.7L136.7,526.7L137.1,525.9L136.5,525.1L136.3,525.9L135.5,525.4L135.6,524.1L134.9,523.8L134.7,522.8L134.9,521.8L134.1,522.1L134.2,521.1L135.1,521.0L134.6,519.7L135.8,519.8L136.1,518.4L136.5,517.5L139.3,514.8L139.9,514.0L140.2,514.2L140.2,512.9L141.4,510.8L142.3,510.0L143.7,509.8L144.7,510.4L145.9,511.9L146.9,511.9L148.4,510.8L150.0,509.0L150.6,508.8L150.8,509.4L152.4,509.5L153.8,509.3L155.3,507.3L155.4,506.8L155.0,504.8L155.0,503.7L154.2,502.4L153.9,501.3L154.9,501.7L155.9,500.9L156.0,500.0L155.0,498.4L154.0,499.5L153.2,499.2L152.3,499.8L151.4,499.8L151.2,500.3L150.1,500.8L149.6,501.9L149.0,502.3L149.0,500.9L148.4,500.5L147.8,501.5L147.7,501.0L146.6,500.1L144.3,499.8L142.5,500.3L141.9,500.4L140.6,499.6L138.2,498.6L137.6,498.0L137.4,497.2L137.9,496.2L137.1,495.2L137.5,494.2L138.1,493.9L138.2,492.6L137.3,492.4L136.7,492.0L135.3,491.4L134.7,490.7L133.7,489.8L133.7,489.0L135.7,488.3L138.3,487.0L140.0,486.3L140.8,487.0L141.6,487.3L142.0,486.5L141.5,486.3L141.6,485.6L143.9,484.8L146.4,484.3L147.7,484.4L148.4,484.8L147.8,486.0L147.8,486.9L147.5,487.5L147.8,488.6L148.6,488.5L149.7,488.9L151.0,488.8L151.3,489.2L152.1,489.4L152.8,489.1L153.7,489.7L154.8,488.1L155.5,488.1L155.9,488.5L156.2,487.5L155.0,486.9L153.8,487.2L154.1,485.9L153.3,484.5L152.4,483.9L152.2,482.7L153.0,482.5L153.9,483.8L153.6,484.8L154.0,485.6L154.9,486.6L155.3,485.7L154.2,484.3L155.0,482.2L154.6,481.8L153.4,482.1L152.2,481.8L152.1,481.4L151.4,481.7L149.1,480.5L149.1,479.5L148.7,477.3L148.2,476.4L147.4,475.6L145.8,473.4L145.1,472.6L144.2,472.2L143.2,470.8L142.1,469.8L142.1,469.6L143.0,469.4L143.7,468.3L144.1,466.0L146.6,466.6L149.6,466.6L150.5,466.3L151.9,465.3L153.3,463.7L153.8,461.9L154.5,460.5L155.6,459.3L156.2,458.4L157.6,457.1L157.7,457.5L158.7,457.7L160.3,457.1L161.3,456.4L163.7,454.0L164.5,454.0L164.6,454.3L165.4,454.1L166.3,454.3L167.9,454.0L169.5,453.0L171.2,450.8L171.9,450.3L171.9,450.7L174.3,451.7L174.5,452.4L173.6,453.2L173.3,453.3L173.2,454.4L174.5,454.1L174.5,453.5L175.1,452.9L175.3,453.2L175.7,451.9L176.9,453.1L176.7,454.0L177.4,454.3L177.9,454.8L178.5,454.0L179.7,453.9L180.3,453.6L182.0,453.9L182.9,454.2L182.5,456.0L184.1,456.4L184.2,456.9L185.8,457.6L185.8,457.2L186.9,456.7L187.9,456.7L188.0,457.1L188.6,457.1L189.2,456.5L190.3,456.3L191.0,456.5L192.1,457.0L192.6,456.9L193.3,457.7L193.7,457.3L194.3,457.5L194.9,458.0ZM182.7,553.0L182.7,553.4L181.2,552.9L182.2,550.9L183.1,550.7L183.7,548.9L184.4,550.5L185.0,549.9L186.1,550.7L186.2,552.0L184.5,552.2L183.8,552.8L182.7,553.0ZM178.5,556.8L179.7,555.8L178.6,555.6L178.6,554.7L179.5,554.1L180.1,554.5L180.2,555.4L180.6,554.8L180.6,553.5L181.3,554.1L181.5,553.3L182.2,553.8L183.0,553.8L183.6,553.3L184.6,554.1L184.7,556.3L186.0,556.1L185.2,557.6L183.6,557.1L184.2,558.0L183.7,558.8L182.9,558.5L182.9,560.0L181.6,560.4L181.2,561.1L180.5,560.5L179.6,562.1L179.0,562.3L178.3,563.0L178.0,561.3L177.1,562.2L177.0,561.6L176.2,561.1L176.1,559.5L175.3,558.9L175.8,557.0L177.4,555.9L178.4,556.0L178.5,556.8ZM176.1,564.1L175.2,565.7L174.9,565.4L176.1,564.1ZM171.3,569.3L172.0,569.4L171.7,571.0L170.6,570.7L170.4,570.2L171.3,569.3ZM152.5,573.2L152.1,574.8L150.6,576.0L151.4,574.0L151.9,574.3L152.5,573.2ZM149.8,572.3L150.6,572.4L150.5,573.2L149.6,574.1L148.9,573.4L148.4,573.9L148.3,572.5L148.6,572.0L149.8,572.3ZM141.8,574.4L141.8,575.1L141.3,575.4L141.0,574.6L141.8,574.4ZM149.6,507.8L149.0,508.4L148.9,507.8L149.6,507.8ZM138.9,577.8L139.8,578.3L139.7,578.9L138.9,578.7L138.9,577.8ZM126.5,577.4L126.6,578.3L125.9,578.6L125.8,577.6L126.5,577.4ZM125.4,578.3L123.9,578.9L123.7,578.3L124.5,577.6L125.4,578.3ZM131.6,530.6L132.5,530.5L132.5,531.0L133.3,531.1L134.0,531.7L133.7,533.9L133.2,534.5L132.2,534.8L131.8,535.5L130.5,534.4L129.9,534.3L128.6,532.9L128.1,532.8L127.4,532.1L127.4,531.0L127.8,530.8L129.2,531.4L130.0,530.7L130.7,530.7L131.1,530.3L131.6,530.6ZM122.4,578.9L123.0,579.6L121.3,580.7L121.2,581.0L123.3,580.3L123.2,580.9L122.4,581.5L121.0,581.7L120.8,582.4L119.3,582.9L118.1,582.7L117.2,583.2L115.6,583.5L115.0,582.7L116.7,582.3L117.1,582.5L118.4,582.0L118.3,581.2L119.1,580.6L120.0,581.1L120.2,580.7L119.2,580.3L118.7,579.6L119.4,578.8L121.2,578.6L121.4,579.7L122.4,578.9ZM110.2,583.1L112.3,582.0L112.5,581.4L113.3,580.9L114.4,580.8L114.9,581.3L114.9,582.3L112.7,583.0L111.3,584.3L110.3,584.6L110.2,583.1ZM105.4,584.0L105.4,584.8L104.2,584.6L104.2,584.1L105.4,584.0ZM111.6,551.2L110.9,551.7L110.9,551.0L111.6,551.2ZM100.8,584.5L100.9,585.3L100.0,585.5L100.0,584.8L100.8,584.5ZM118.5,500.9L120.8,502.7L122.6,502.2L123.2,502.4L123.7,503.1L123.7,504.0L124.9,504.9L125.2,505.4L126.9,506.0L127.9,506.6L127.1,507.6L126.3,507.2L125.3,507.1L124.7,507.5L124.0,508.5L123.6,507.4L123.0,506.5L122.4,506.2L122.2,505.3L120.8,503.9L120.0,503.7L118.6,504.2L117.8,503.5L117.6,502.5L118.5,500.9ZM92.2,584.6L92.0,585.5L91.1,585.4L91.5,584.7L92.2,584.6ZM86.2,584.8L86.7,585.3L88.4,585.7L88.4,586.0L86.3,585.8L86.2,584.8ZM83.4,582.8L83.6,582.1L84.3,582.0L85.0,583.0L84.4,583.6L83.9,583.4L83.8,584.2L82.9,584.0L80.8,584.2L79.9,583.6L80.3,583.2L81.4,583.6L83.4,582.8ZM72.6,582.7L73.5,582.9L73.1,583.8L72.1,583.3L70.5,583.9L70.5,582.3L71.0,582.4L71.5,581.4L72.2,581.6L71.9,582.4L72.6,582.7ZM69.7,580.9L70.1,581.4L69.3,582.5L68.5,582.6L68.7,581.9L69.7,580.9ZM65.3,579.5L66.1,579.8L66.4,580.9L65.3,581.7L65.3,579.5ZM30.2,554.3L29.2,554.3L28.8,555.0L22.0,551.7L23.7,551.2L24.0,550.7L30.2,554.3Z","Arizona":"M262.9,313.1L245.5,438.0L207.8,432.4L187.5,420.6L143.7,394.7L146.4,390.1L150.1,390.0L151.5,388.3L151.3,384.0L148.9,383.4L149.3,375.1L153.6,372.7L154.7,369.5L155.0,364.3L157.9,360.9L161.0,360.0L163.7,357.5L160.8,353.7L159.5,347.5L157.3,343.4L157.9,340.6L159.5,337.8L160.0,333.7L159.4,329.2L160.9,316.2L167.4,316.6L169.0,319.6L170.7,319.9L173.2,316.5L176.6,298.9L237.7,309.3L262.9,313.1Z","Arkansas":"M516.8,339.6L592.7,336.8L594.5,340.9L591.9,343.8L589.4,348.1L600.8,347.4L600.5,351.6L598.0,353.0L597.6,356.4L594.5,360.3L595.1,365.6L593.6,369.6L591.9,370.3L593.1,372.2L590.3,374.1L589.3,377.9L587.5,379.0L588.0,383.4L584.8,384.8L585.0,386.2L581.4,390.1L582.7,392.5L579.6,396.2L577.0,403.1L580.4,405.9L578.9,407.8L580.1,412.4L578.8,415.5L533.9,416.8L526.0,417.0L525.7,405.2L523.1,404.3L519.5,405.4L517.6,403.4L517.9,364.2L514.3,339.6L516.8,339.6Z","California":"M52.3,154.0L65.7,157.8L86.7,164.0L103.0,168.3L93.5,205.6L86.3,232.9L102.8,257.7L118.7,281.7L131.6,300.9L141.0,315.1L157.9,340.6L157.3,343.4L159.5,347.5L160.8,353.7L163.7,357.5L161.0,360.0L157.9,360.9L155.0,364.3L154.7,369.5L153.6,372.7L149.3,375.1L148.9,383.4L151.3,384.0L151.5,388.3L150.1,390.0L146.4,390.1L122.0,387.2L102.1,384.8L100.6,381.4L101.5,376.9L101.3,371.3L99.6,366.9L95.3,360.4L89.3,353.8L87.7,354.8L85.1,353.3L86.0,351.3L84.0,346.2L79.6,346.1L73.1,341.1L72.7,338.2L68.6,333.8L63.0,332.5L58.7,329.9L52.7,329.0L50.4,325.3L52.7,319.5L51.9,318.3L53.7,314.2L50.0,309.8L51.0,305.4L49.3,304.7L47.5,300.2L45.8,298.8L45.6,296.2L41.5,285.6L39.1,282.2L40.4,275.1L41.5,276.0L43.9,272.2L42.5,267.8L39.5,267.4L36.6,262.9L36.0,259.8L37.0,257.3L36.0,253.4L37.6,247.7L40.7,248.6L41.7,240.4L40.1,240.8L38.7,244.6L35.2,244.5L32.2,240.4L33.0,235.2L31.6,230.5L29.0,227.1L28.1,223.7L24.9,216.8L26.2,215.4L26.1,207.6L28.3,203.9L28.7,197.5L26.3,190.4L23.3,185.9L23.7,181.8L30.5,173.7L32.3,170.8L32.2,168.1L35.7,162.2L36.2,155.9L34.9,154.0L37.0,149.6L52.3,154.0Z","Colorado":"M293.5,227.1L329.4,231.4L357.0,233.8L389.9,236.3L388.5,258.6L384.5,325.5L367.8,324.2L344.5,322.4L300.5,318.0L290.9,316.7L262.9,313.1L266.4,287.3L266.5,284.9L269.2,266.1L275.0,224.8L293.5,227.1Z","Connecticut":"M860.0,171.6L879.8,166.9L879.9,167.2L883.2,180.0L882.8,182.2L881.3,182.2L874.8,185.7L866.3,187.3L863.5,191.1L859.8,193.0L855.9,196.6L854.1,194.4L857.5,191.1L855.9,189.6L853.0,173.0L860.0,171.6Z","Delaware":"M833.2,228.9L832.3,231.8L830.9,233.6L832.0,237.0L835.1,239.7L836.9,244.9L841.7,249.7L843.4,249.6L845.8,257.0L835.0,259.1L827.5,232.0L829.8,229.0L833.2,228.9Z","District of Columbia":"M810.13,252.21L812.67,253.93L810.94,256.65L809.03,253.80L810.13,252.21Z","Florida":"M687.7,451.3L696.9,450.1L700.2,456.2L726.2,454.4L750.5,452.7L752.1,457.3L754.3,456.8L754.5,452.3L753.2,448.3L754.7,446.4L759.2,447.5L764.5,447.6L767.1,456.8L771.1,467.1L778.8,480.2L789.7,493.8L788.6,495.0L790.2,501.9L795.1,509.0L803.3,523.6L805.3,528.3L806.1,533.2L806.9,551.5L805.1,552.1L804.1,558.0L805.0,559.7L801.9,564.3L800.2,563.6L796.8,565.9L790.6,567.8L788.3,565.9L788.7,562.4L782.7,553.6L779.0,552.3L776.1,554.1L773.0,549.1L771.6,544.8L766.8,540.6L765.4,537.5L765.3,532.8L763.0,532.3L763.9,534.9L762.0,535.9L754.0,525.1L751.2,522.4L755.8,512.9L752.0,513.9L749.9,517.0L746.7,513.1L748.4,500.7L747.6,490.7L745.0,488.6L743.8,485.5L740.1,485.3L735.0,480.6L731.3,478.9L730.7,475.7L728.1,474.8L725.7,471.4L717.8,467.6L711.6,469.5L712.3,472.8L710.2,472.4L702.8,477.5L694.4,479.4L694.4,477.0L692.0,474.3L681.5,468.9L674.1,466.9L667.7,466.8L662.5,467.8L651.2,470.9L653.7,467.4L652.1,465.7L652.5,462.0L647.9,458.2L648.2,455.2L687.7,451.3Z","Georgia":"M720.4,357.6L717.2,362.8L717.2,365.2L723.9,369.1L725.7,368.4L729.1,372.9L730.0,375.3L733.5,379.5L738.1,381.7L741.0,385.5L746.4,388.5L746.6,391.0L750.4,394.7L755.8,397.3L757.6,400.7L758.5,405.4L761.2,406.5L765.1,412.0L765.8,415.7L770.3,416.9L766.9,425.1L766.7,429.0L765.3,432.7L765.7,436.2L763.9,438.1L764.5,447.6L759.2,447.5L754.7,446.4L753.2,448.3L754.5,452.3L754.3,456.8L752.1,457.3L750.5,452.7L726.2,454.4L700.2,456.2L696.9,450.1L694.2,444.3L694.8,438.4L692.2,431.9L693.4,428.0L693.0,425.2L695.8,422.1L693.6,421.0L694.1,418.8L691.7,415.5L688.9,409.6L681.2,382.1L676.0,363.4L698.9,360.6L711.4,359.2L720.4,357.6Z","Hawaii":"M393.4,586.0L388.2,584.1L387.4,582.2L388.1,577.2L384.4,568.8L387.2,566.0L389.3,562.1L387.8,559.6L388.2,557.0L394.1,560.1L400.6,562.3L404.6,565.7L404.6,568.6L410.6,573.2L407.0,577.1L400.5,579.0L395.9,581.9L393.4,586.0ZM373.4,540.3L375.8,543.3L378.8,542.0L385.6,545.4L384.5,548.6L377.7,550.1L376.4,549.5L376.0,545.7L372.5,544.9L371.1,542.7L373.4,540.3ZM365.2,536.3L363.2,538.6L358.4,538.6L359.9,536.1L365.2,536.3ZM345.2,525.6L347.4,530.8L346.3,533.8L341.8,534.2L338.9,528.1L341.5,528.0L345.2,525.6ZM313.9,513.8L316.3,514.0L317.4,516.3L316.7,519.6L314.3,521.6L307.7,519.0L308.6,515.4L313.9,513.8Z","Idaho":"M198.1,32.0L193.4,53.9L196.8,60.9L195.7,66.8L197.9,69.9L200.7,71.5L200.7,73.1L205.1,80.0L205.3,82.5L208.7,85.5L208.6,87.0L213.0,87.7L209.2,95.3L207.8,100.3L208.7,104.0L205.6,105.8L206.2,108.3L205.0,110.5L207.8,113.4L212.1,111.1L214.0,109.1L216.4,111.7L215.6,113.4L216.3,117.9L218.0,122.7L219.6,124.6L218.7,128.8L220.1,130.9L223.3,131.7L224.1,139.1L225.6,140.6L227.6,138.9L232.4,139.9L236.3,138.6L238.2,140.0L242.0,139.7L242.6,141.0L245.9,140.7L250.2,136.7L252.0,141.0L254.5,143.7L245.8,197.9L227.8,195.1L197.7,189.6L150.1,179.5L159.0,139.9L162.7,133.3L161.8,131.2L158.9,130.2L158.5,127.0L163.3,120.0L165.1,119.6L167.4,116.8L167.6,114.7L169.9,112.5L171.7,109.0L176.2,103.3L175.6,100.0L172.4,97.7L171.2,93.6L171.9,89.8L170.8,85.6L171.5,83.9L177.8,55.2L183.9,28.9L198.1,32.0Z","Illinois":"M576.6,203.5L606.5,201.9L622.4,200.6L622.2,204.9L625.1,209.7L628.4,217.6L633.0,269.9L631.5,274.1L634.1,278.7L634.7,282.5L632.8,285.9L632.5,288.9L629.9,293.9L627.9,294.4L628.6,297.2L627.4,298.4L626.8,303.7L627.5,305.1L625.5,308.5L627.4,312.2L620.5,314.9L620.0,317.2L621.9,320.0L619.8,322.0L613.2,319.1L611.2,319.5L608.8,323.6L609.8,324.7L607.0,324.7L602.6,318.6L604.0,317.1L602.2,312.9L602.0,309.5L596.1,305.1L594.3,305.7L592.2,302.9L586.8,298.7L586.7,295.2L589.3,289.3L588.7,287.2L590.2,284.4L587.7,283.0L583.9,282.3L582.1,284.4L580.7,283.2L579.2,275.9L573.3,271.5L567.8,266.0L565.4,259.3L565.0,254.8L566.3,251.5L566.4,247.5L570.9,244.8L571.2,241.4L573.2,239.1L573.3,235.2L570.4,232.2L571.3,228.2L577.6,226.8L582.6,223.7L582.9,220.2L584.9,218.6L585.3,214.4L584.7,211.6L580.9,209.6L580.3,207.3L576.6,203.5Z","Indiana":"M653.3,214.0L672.5,211.9L672.7,213.3L675.9,239.7L679.3,270.7L678.1,271.8L680.2,277.7L677.2,278.2L674.3,280.6L669.8,280.1L670.5,284.5L667.8,286.6L667.0,289.5L664.1,290.9L663.1,296.7L661.3,298.3L657.3,296.7L656.3,294.2L652.9,297.4L653.4,299.8L649.6,301.0L648.3,298.9L644.2,301.5L643.0,304.0L638.4,301.1L636.2,302.0L634.5,300.6L633.2,302.3L628.9,302.9L627.5,305.1L626.8,303.7L627.4,298.4L628.6,297.2L627.9,294.4L629.9,293.9L632.5,288.9L632.8,285.9L634.7,282.5L634.1,278.7L631.5,274.1L633.0,269.9L628.4,217.6L630.2,218.9L635.2,218.4L639.7,215.4L653.3,214.0Z","Iowa":"M563.7,182.2L566.2,182.0L566.5,185.3L569.0,187.4L567.2,190.1L568.0,195.1L569.4,198.6L575.3,200.8L576.6,203.5L580.3,207.3L580.9,209.6L584.7,211.6L585.3,214.4L584.9,218.6L582.9,220.2L582.6,223.7L577.6,226.8L571.3,228.2L570.4,232.2L573.3,235.2L573.2,239.1L571.2,241.4L570.9,244.8L566.4,247.5L566.3,251.5L564.4,250.9L560.9,246.5L559.1,246.7L535.5,248.2L512.7,248.9L493.8,248.7L491.9,245.8L492.8,240.1L491.2,235.1L491.2,229.5L488.4,227.5L487.9,224.5L488.9,221.8L487.8,217.9L485.6,216.4L482.7,206.4L479.7,201.6L481.2,198.3L481.7,193.9L483.0,192.3L481.0,190.1L481.5,186.2L480.6,184.4L482.7,183.9L563.7,182.2Z","Kansas":"M391.0,258.7L501.6,261.8L503.2,263.8L508.7,265.5L505.0,272.0L507.1,274.2L509.8,279.4L513.5,280.4L514.1,328.5L418.6,327.2L384.5,325.5L388.5,258.6L391.0,258.7Z","Kentucky":"M695.6,276.2L699.8,278.7L702.3,276.8L708.9,277.6L710.5,275.2L712.8,274.1L714.0,277.8L716.1,278.1L718.8,280.8L719.3,287.5L721.9,291.4L725.1,294.3L726.3,296.7L730.0,298.8L732.3,298.8L726.6,305.7L720.7,309.9L721.0,311.6L718.6,313.4L718.7,315.3L715.5,316.6L714.7,319.2L705.8,323.6L705.5,324.0L690.6,325.6L677.5,326.4L674.1,327.1L654.7,328.2L632.7,330.8L628.8,330.1L629.5,334.1L607.6,335.5L605.6,335.9L606.3,333.1L609.0,333.9L609.8,324.7L608.8,323.6L611.2,319.5L613.2,319.1L619.8,322.0L621.9,320.0L620.0,317.2L620.5,314.9L627.4,312.2L625.5,308.5L627.5,305.1L628.9,302.9L633.2,302.3L634.5,300.6L636.2,302.0L638.4,301.1L643.0,304.0L644.2,301.5L648.3,298.9L649.6,301.0L653.4,299.8L652.9,297.4L656.3,294.2L657.3,296.7L661.3,298.3L663.1,296.7L664.1,290.9L667.0,289.5L667.8,286.6L670.5,284.5L669.8,280.1L674.3,280.6L677.2,278.2L680.2,277.7L678.1,271.8L679.3,270.7L685.7,269.9L689.7,274.1L690.2,276.0L695.6,276.2Z","Louisiana":"M533.9,416.8L578.8,415.5L580.7,417.9L579.4,419.0L579.5,423.5L582.3,426.1L583.1,432.7L581.1,437.9L576.9,441.3L576.0,446.3L574.1,445.9L574.2,454.0L572.0,454.4L573.5,458.7L572.2,460.3L607.8,458.3L606.4,465.7L609.9,470.3L610.8,473.9L613.3,476.1L607.9,479.5L607.6,481.7L612.3,482.8L614.0,479.2L618.2,482.4L618.1,485.2L615.9,486.6L611.5,485.8L612.2,487.8L610.9,491.0L614.8,493.5L620.7,494.0L623.1,497.1L624.8,497.4L622.0,501.4L618.6,500.9L615.5,497.2L608.3,495.7L608.0,491.9L604.6,493.4L605.1,496.5L603.7,499.5L601.1,500.1L599.1,497.0L594.6,497.1L593.2,500.6L590.3,501.7L587.1,499.8L584.5,499.7L581.8,494.4L577.4,492.2L575.7,492.6L573.8,488.1L568.8,489.0L568.6,486.2L563.8,489.1L564.5,491.1L560.8,493.2L554.9,492.4L547.9,489.6L543.1,488.4L532.7,489.8L531.4,490.7L529.6,488.5L534.0,480.6L532.4,476.4L533.7,474.0L533.0,471.0L534.8,468.7L536.6,462.9L536.2,458.2L530.8,449.4L530.6,444.5L526.4,439.7L526.0,417.0L533.9,416.8Z","Maine":"M891.0,140.1L888.8,139.1L888.4,136.9L885.3,135.1L876.7,107.3L872.3,93.7L878.0,89.0L876.5,87.8L878.1,83.8L880.2,81.6L879.3,80.5L881.1,77.8L879.4,74.3L879.3,68.3L881.0,65.8L880.2,59.7L886.8,40.3L889.6,40.2L890.9,44.1L893.3,44.9L897.2,41.2L900.2,40.4L901.8,38.2L906.8,40.4L910.0,42.4L917.4,66.0L918.8,71.7L924.4,71.7L924.4,74.3L926.4,76.2L926.0,78.6L929.1,81.2L931.7,79.7L936.7,86.3L934.7,90.7L932.5,90.0L931.7,92.7L929.4,92.8L929.8,94.9L926.9,95.5L923.8,101.4L921.8,98.6L920.2,98.8L921.9,101.9L918.9,104.6L917.3,102.2L916.1,104.1L912.2,105.2L911.2,102.1L909.1,103.5L910.1,105.6L909.3,110.9L910.1,112.0L908.0,115.4L904.9,115.3L904.0,118.4L901.8,119.5L900.5,122.2L898.0,122.4L896.7,120.3L894.3,125.0L895.9,127.1L893.6,128.6L894.0,130.6L891.8,133.9L891.0,140.1Z","Maryland":"M832.3,271.3L831.9,271.4L831.5,271.5L832.3,271.3ZM766.5,243.9L827.5,232.0L835.0,259.1L845.8,257.0L844.6,266.9L842.1,267.8L837.7,270.1L834.3,271.9L833.7,268.3L832.0,267.1L833.6,265.1L830.2,262.1L829.7,263.8L826.2,264.2L824.2,260.5L825.3,260.3L824.3,255.1L824.9,252.9L822.0,246.3L823.0,241.8L825.6,240.5L825.2,236.2L823.2,237.2L823.6,239.3L819.8,243.0L819.1,245.8L820.1,252.2L819.1,255.5L820.9,260.4L823.8,263.4L824.1,266.0L826.0,268.4L825.6,270.3L821.0,267.7L815.2,267.1L812.8,264.1L810.1,266.7L808.4,264.3L810.2,260.4L810.9,256.7L812.7,253.9L810.1,252.2L809.0,253.8L806.4,252.2L802.7,251.8L802.1,248.6L799.9,247.1L797.3,247.3L794.2,241.5L791.4,242.1L788.2,240.6L787.0,242.5L784.3,242.9L784.1,245.5L778.9,244.8L776.2,248.6L773.9,248.3L771.3,252.6L768.3,255.3L766.5,243.9Z","Massachusetts":"M888.7,144.6L890.3,144.6L891.9,148.2L892.1,151.4L890.4,154.9L891.2,158.2L894.7,157.8L897.7,160.6L898.1,163.4L900.0,163.6L900.9,166.1L905.9,167.0L910.4,163.5L910.1,166.8L903.3,171.5L900.6,172.3L898.4,170.8L895.9,172.1L896.3,173.6L893.6,175.4L891.3,171.8L890.7,171.2L888.6,170.1L886.4,165.3L884.1,165.9L879.9,167.2L879.8,166.9L860.0,171.6L853.0,173.0L852.5,172.2L852.9,157.1L865.6,154.3L883.9,150.3L885.1,147.9L888.7,144.6Z","Michigan":"M694.5,209.7L672.7,213.3L672.5,211.9L653.3,214.0L639.7,215.4L642.7,212.2L644.5,207.0L646.2,203.8L647.3,199.4L647.5,193.2L646.5,186.7L640.5,174.4L641.5,169.4L639.9,163.7L642.9,157.4L643.1,152.4L642.3,149.8L644.8,148.5L644.7,144.8L648.6,143.4L651.3,139.1L651.9,147.1L653.5,147.3L655.1,143.1L654.5,136.3L655.5,134.5L659.6,132.9L657.8,128.4L660.1,124.1L663.5,123.5L667.6,125.5L671.5,125.4L673.7,128.3L676.6,128.2L681.8,130.4L683.4,130.1L686.7,134.4L684.9,137.2L687.4,140.2L688.6,143.8L688.8,152.1L685.9,154.6L685.7,158.9L682.1,160.8L680.7,166.2L681.7,168.0L685.7,169.3L688.3,166.1L691.0,160.0L696.1,157.1L699.0,158.4L701.1,161.3L704.0,170.2L704.9,174.8L707.4,180.1L706.9,188.2L704.5,189.8L704.0,186.9L702.3,188.0L701.2,194.9L698.3,197.9L698.0,203.1L694.5,207.9L694.5,209.7ZM651.4,125.7L652.0,128.3L650.0,129.0L650.4,125.2L651.4,125.7ZM620.7,142.9L618.1,140.8L619.3,137.5L615.6,137.4L616.8,134.2L616.6,130.4L613.2,128.0L611.2,125.4L604.5,123.7L602.5,124.6L595.8,121.8L579.7,118.5L577.8,114.8L574.9,113.7L580.7,111.0L583.2,108.2L589.7,106.7L593.8,103.1L595.8,102.9L597.3,100.5L601.7,96.9L603.9,93.9L607.3,91.8L610.8,93.1L605.4,100.3L604.2,102.7L604.6,106.8L607.2,103.4L612.5,103.5L616.7,105.3L620.9,111.0L623.0,111.9L626.7,110.5L627.8,111.8L631.7,112.1L639.3,106.3L643.5,105.3L649.1,105.0L652.7,102.9L655.6,102.4L656.9,108.4L660.0,108.9L662.8,107.6L664.3,108.9L666.0,106.9L670.4,105.7L671.4,113.4L673.8,116.4L676.9,116.8L677.0,114.6L679.9,114.2L681.8,116.3L680.7,118.2L672.1,117.8L668.2,119.2L663.6,117.1L662.6,119.7L663.4,121.7L661.4,121.4L658.3,118.7L653.1,117.5L650.6,117.7L648.5,120.8L644.6,122.0L640.1,121.8L638.5,123.2L638.3,125.6L633.7,128.2L633.7,125.3L631.6,124.9L631.0,128.0L627.5,128.4L626.0,129.9L624.1,135.3L620.3,142.3L620.7,142.9ZM597.0,81.2L593.5,84.2L591.6,84.7L591.6,82.5L600.5,76.6L599.0,80.3L597.0,81.2Z","Minnesota":"M550.5,111.9L549.3,111.0L546.3,112.9L546.8,125.9L545.9,127.3L541.6,129.3L538.2,134.1L538.1,137.2L539.8,137.4L541.9,140.1L540.2,143.6L540.7,147.3L539.9,155.5L544.1,159.3L547.4,159.6L549.1,161.9L554.0,164.1L554.9,167.0L559.6,170.6L562.2,171.3L565.4,176.0L565.2,179.5L566.2,182.0L563.7,182.2L482.7,183.9L482.9,144.2L479.4,141.6L476.7,137.4L481.0,132.7L481.3,130.1L480.8,121.3L478.9,119.0L477.7,114.2L478.0,108.3L477.5,107.3L477.1,93.2L474.2,85.8L473.1,81.6L472.7,72.7L473.8,69.7L471.9,62.8L502.3,62.8L502.3,54.5L505.2,54.7L507.1,56.3L509.2,67.6L510.7,68.9L515.6,69.2L516.1,70.3L521.8,70.6L522.5,73.0L527.4,72.3L527.3,71.3L531.1,70.0L534.4,70.4L538.3,72.1L539.4,74.3L541.6,74.0L543.8,78.8L544.7,76.8L548.4,75.7L549.1,77.7L553.6,78.9L553.7,80.8L555.9,82.3L560.4,81.2L562.9,78.9L566.5,77.4L568.0,80.6L570.5,79.7L573.5,80.3L577.0,79.6L581.2,82.1L584.9,81.3L584.7,82.6L579.9,85.6L573.1,88.2L568.7,90.8L562.5,96.7L559.9,100.4L555.8,104.5L549.2,110.1L550.5,111.9Z","Mississippi":"M624.8,368.0L629.6,367.6L631.7,369.8L631.1,394.3L630.3,436.7L634.4,470.4L632.4,471.5L627.8,471.4L625.8,470.1L621.3,471.4L615.2,474.3L613.3,476.1L610.8,473.9L609.9,470.3L606.4,465.7L607.8,458.3L572.2,460.3L573.5,458.7L572.0,454.4L574.2,454.0L574.1,445.9L576.0,446.3L576.9,441.3L581.1,437.9L583.1,432.7L582.3,426.1L579.5,423.5L579.4,419.0L580.7,417.9L578.8,415.5L580.1,412.4L578.9,407.8L580.4,405.9L577.0,403.1L579.6,396.2L582.7,392.5L581.4,390.1L585.0,386.2L584.8,384.8L588.0,383.4L587.5,379.0L589.3,377.9L590.3,374.1L593.1,372.2L591.9,370.3L624.8,368.0Z","Missouri":"M559.1,246.7L560.9,246.5L564.4,250.9L566.3,251.5L565.0,254.8L565.4,259.3L567.8,266.0L573.3,271.5L579.2,275.9L580.7,283.2L582.1,284.4L583.9,282.3L587.7,283.0L590.2,284.4L588.7,287.2L589.3,289.3L586.7,295.2L586.8,298.7L592.2,302.9L594.3,305.7L596.1,305.1L602.0,309.5L602.2,312.9L604.0,317.1L602.6,318.6L607.0,324.7L609.8,324.7L609.0,333.9L606.3,333.1L605.6,335.9L604.4,336.0L603.4,336.1L603.9,341.6L600.8,347.4L589.4,348.1L591.9,343.8L594.5,340.9L592.7,336.8L516.8,339.6L514.3,339.6L514.1,328.5L513.5,280.4L509.8,279.4L507.1,274.2L505.0,272.0L508.7,265.5L503.2,263.8L501.6,261.8L497.4,255.9L493.8,248.7L512.7,248.9L535.5,248.2L559.1,246.7Z","Montana":"M372.0,57.9L370.0,82.7L366.4,124.7L364.7,145.5L364.4,145.5L335.6,142.7L286.6,136.7L256.2,132.2L254.5,143.7L252.0,141.0L250.2,136.7L245.9,140.7L242.6,141.0L242.0,139.7L238.2,140.0L236.3,138.6L232.4,139.9L227.6,138.9L225.6,140.6L224.1,139.1L223.3,131.7L220.1,130.9L218.7,128.8L219.6,124.6L218.0,122.7L216.3,117.9L215.6,113.4L216.4,111.7L214.0,109.1L212.1,111.1L207.8,113.4L205.0,110.5L206.2,108.3L205.6,105.8L208.7,104.0L207.8,100.3L209.2,95.3L213.0,87.7L208.6,87.0L208.7,85.5L205.3,82.5L205.1,80.0L200.7,73.1L200.7,71.5L197.9,69.9L195.7,66.8L196.8,60.9L193.4,53.9L198.1,32.0L263.5,44.5L293.3,48.9L372.0,57.9Z","Nebraska":"M372.4,190.5L399.6,192.5L449.8,194.6L450.3,195.7L458.5,199.9L460.5,197.8L462.7,198.3L470.3,198.4L478.8,202.6L479.8,205.8L482.7,206.4L485.6,216.4L487.8,217.9L488.9,221.8L487.9,224.5L488.4,227.5L491.2,229.5L491.2,235.1L492.8,240.1L491.9,245.8L493.8,248.7L497.4,255.9L501.6,261.8L391.0,258.7L388.5,258.6L389.9,236.3L357.0,233.8L360.8,189.5L372.4,190.5Z","Nevada":"M150.1,179.5L197.7,189.6L176.6,298.9L173.2,316.5L170.7,319.9L169.0,319.6L167.4,316.6L160.9,316.2L159.4,329.2L160.0,333.7L159.5,337.8L157.9,340.6L141.0,315.1L131.6,300.9L118.7,281.7L102.8,257.7L86.3,232.9L93.5,205.6L103.0,168.3L123.6,173.6L150.1,179.5Z","New Hampshire":"M872.3,93.7L876.7,107.3L885.3,135.1L888.4,136.9L888.8,139.1L891.0,140.1L890.3,144.6L888.7,144.6L885.1,147.9L883.9,150.3L865.6,154.3L863.8,153.0L863.2,149.8L864.3,148.3L863.3,145.3L862.2,135.9L863.8,131.0L863.9,125.8L864.8,123.7L863.4,118.4L868.0,115.1L869.5,110.8L867.2,107.7L868.3,103.6L867.6,101.5L868.3,95.5L871.9,95.1L872.3,93.7Z","New Jersey":"M845.8,195.5L851.8,197.3L851.4,204.1L849.1,206.1L848.4,209.8L853.3,210.4L854.2,212.8L855.0,224.9L851.9,234.8L849.1,238.1L847.4,244.2L845.0,241.0L839.8,240.3L832.9,236.8L831.8,233.7L831.6,233.2L832.3,231.8L833.2,228.9L837.2,226.1L837.1,224.4L841.3,219.7L841.7,217.6L836.1,214.2L835.3,211.5L833.1,211.3L832.3,208.8L834.0,204.5L832.1,202.5L835.2,197.1L835.5,194.5L837.3,192.5L845.8,195.5Z","New Mexico":"M290.9,316.7L300.5,318.0L344.5,322.4L367.8,324.2L366.9,335.3L366.3,335.2L362.1,390.5L360.0,412.9L358.3,435.1L292.5,428.9L291.7,431.1L293.6,433.8L262.4,430.1L261.1,440.1L245.5,438.0L262.9,313.1L290.9,316.7Z","New York":"M839.8,108.6L841.0,113.0L841.2,117.2L843.5,120.8L844.1,125.0L843.4,129.8L846.2,135.4L845.8,137.3L849.1,140.3L852.2,155.3L852.9,157.1L852.5,172.2L853.0,173.0L855.9,189.6L857.5,191.1L854.1,194.4L855.9,196.6L863.2,196.7L864.3,195.1L870.1,193.6L873.0,192.2L877.0,187.5L878.0,189.9L880.8,190.3L875.7,195.0L864.5,202.8L859.5,205.0L856.0,205.6L853.7,207.3L851.4,204.1L851.8,197.3L845.8,195.5L837.3,192.5L836.2,191.1L833.7,191.5L830.0,188.5L829.6,185.2L827.2,183.1L826.0,183.5L823.6,180.9L753.2,194.8L752.2,189.2L752.2,188.9L760.9,180.9L761.9,177.6L764.6,175.0L762.8,171.6L761.3,171.1L759.3,165.3L768.1,161.1L776.2,159.6L779.6,159.6L783.6,161.3L785.7,159.9L792.5,158.7L796.3,156.3L799.8,151.4L802.6,150.7L801.4,144.8L802.2,141.0L798.2,139.4L798.4,136.5L803.8,131.5L805.3,127.8L811.1,119.0L817.2,113.8L827.7,112.0L839.8,108.6Z","North Carolina":"M752.7,317.7L764.6,316.1L778.2,313.9L841.0,301.4L844.9,309.7L839.8,309.9L839.4,311.1L833.8,313.7L833.2,315.0L829.4,316.2L829.9,317.7L834.4,315.6L835.3,316.5L840.3,314.3L842.4,315.9L845.4,314.4L847.7,319.4L847.2,322.2L845.1,322.9L841.9,329.2L836.1,330.6L835.9,334.5L839.2,337.7L841.3,338.0L838.8,344.9L835.5,344.8L830.0,346.6L826.4,348.7L821.1,354.1L817.3,360.5L816.1,367.9L812.1,367.1L805.9,369.7L782.0,352.5L762.0,355.5L761.9,352.9L758.6,349.6L757.0,351.2L756.5,348.9L734.5,351.2L729.8,352.7L726.3,355.3L720.4,357.6L711.4,359.2L698.9,360.6L698.7,355.4L702.2,354.5L703.1,350.7L707.0,346.8L711.8,346.1L715.7,342.1L720.1,340.3L723.2,334.8L725.4,333.0L726.2,335.1L732.5,329.9L735.8,330.3L737.4,325.8L740.5,324.3L740.5,319.0L752.7,317.7Z","North Dakota":"M471.9,62.8L473.8,69.7L472.7,72.7L473.1,81.6L474.2,85.8L477.1,93.2L477.5,107.3L478.0,108.3L477.7,114.2L478.9,119.0L480.8,121.3L481.3,130.1L366.4,124.7L370.0,82.7L372.0,57.9L471.9,62.8Z","Ohio":"M741.1,197.3L746.0,226.7L743.7,228.3L745.3,230.6L745.8,234.0L744.4,239.6L744.1,247.9L738.8,256.1L736.8,257.4L734.8,256.2L733.3,259.6L731.4,259.8L729.9,264.4L730.7,266.8L729.3,269.1L726.3,266.1L724.0,271.9L725.3,275.2L723.4,276.7L723.2,279.7L718.8,280.8L716.1,278.1L714.0,277.8L712.8,274.1L710.5,275.2L708.9,277.6L702.3,276.8L699.8,278.7L695.6,276.2L690.2,276.0L689.7,274.1L685.7,269.9L679.3,270.7L675.9,239.7L672.7,213.3L694.5,209.7L701.2,211.9L703.6,213.4L705.0,211.5L709.0,214.5L711.4,215.3L718.6,211.3L723.1,211.2L727.3,206.4L733.6,201.3L741.1,197.3Z","Oklahoma":"M418.6,327.2L514.1,328.5L514.3,339.6L517.9,364.2L517.6,403.4L510.6,401.0L508.7,398.5L504.0,396.4L502.8,398.3L498.2,398.2L497.2,397.0L492.9,399.2L491.1,398.0L487.2,399.1L483.6,402.5L482.2,400.5L478.4,398.9L474.4,398.9L473.2,396.3L468.5,401.3L467.1,398.5L465.0,399.3L463.4,397.4L459.1,395.7L455.9,398.5L454.6,395.4L452.0,395.0L450.5,392.6L447.1,391.5L444.8,393.5L443.3,391.6L439.7,391.8L435.8,389.7L432.1,389.8L431.0,385.5L425.3,385.1L423.1,385.7L419.2,381.3L417.8,381.5L419.6,338.3L387.8,336.7L366.9,335.3L367.8,324.2L384.5,325.5L418.6,327.2Z","Oregon":"M78.7,65.6L80.2,65.8L82.7,68.9L83.3,71.8L82.2,78.4L89.2,82.9L96.6,81.4L100.8,82.2L105.2,84.6L105.3,86.2L114.3,85.3L116.0,86.9L120.5,87.5L124.8,86.3L131.8,86.1L137.9,87.1L140.2,86.2L171.2,93.6L172.4,97.7L175.6,100.0L176.2,103.3L171.7,109.0L169.9,112.5L167.6,114.7L167.4,116.8L165.1,119.6L163.3,120.0L158.5,127.0L158.9,130.2L161.8,131.2L162.7,133.3L159.0,139.9L150.1,179.5L123.6,173.6L103.0,168.3L86.7,164.0L65.7,157.8L52.3,154.0L37.0,149.6L35.5,146.4L36.4,139.2L38.2,134.5L37.2,130.2L39.8,127.1L42.6,121.8L46.8,116.4L49.4,111.4L56.5,93.9L57.0,91.4L60.9,84.0L64.7,73.3L65.8,67.0L67.6,63.6L74.4,62.3L76.2,65.5L78.7,65.6Z","Pennsylvania":"M752.2,189.2L753.2,194.8L823.6,180.9L826.0,183.5L827.2,183.1L829.6,185.2L830.0,188.5L833.7,191.5L836.2,191.1L837.3,192.5L835.5,194.5L835.2,197.1L832.1,202.5L834.0,204.5L832.3,208.8L833.1,211.3L835.3,211.5L836.1,214.2L841.7,217.6L841.3,219.7L837.1,224.4L837.2,226.1L833.2,228.9L829.8,229.0L827.5,232.0L766.5,243.9L749.3,246.9L746.0,226.7L741.1,197.3L743.9,195.6L752.2,188.9L752.2,189.2Z","Rhode Island":"M891.3,171.8L893.6,175.4L890.6,176.7L891.3,171.8ZM884.1,165.9L886.4,165.3L888.6,170.1L890.7,171.2L888.7,171.4L887.9,175.0L888.5,179.6L882.8,182.2L883.2,180.0L879.9,167.2L884.1,165.9Z","South Carolina":"M726.3,355.3L729.8,352.7L734.5,351.2L756.5,348.9L757.0,351.2L758.6,349.6L761.9,352.9L762.0,355.5L782.0,352.5L805.9,369.7L803.0,371.4L799.7,375.7L796.9,382.0L797.0,386.7L794.6,390.9L790.5,391.6L790.1,394.4L786.3,398.0L784.4,401.5L780.9,403.5L777.3,407.5L777.2,409.1L773.7,411.6L770.3,416.9L765.8,415.7L765.1,412.0L761.2,406.5L758.5,405.4L757.6,400.7L755.8,397.3L750.4,394.7L746.6,391.0L746.4,388.5L741.0,385.5L738.1,381.7L733.5,379.5L730.0,375.3L729.1,372.9L725.7,368.4L723.9,369.1L717.2,365.2L717.2,362.8L720.4,357.6L726.3,355.3Z","South Dakota":"M366.4,124.7L481.3,130.1L481.0,132.7L476.7,137.4L479.4,141.6L482.9,144.2L482.7,183.9L480.6,184.4L481.5,186.2L481.0,190.1L483.0,192.3L481.7,193.9L481.2,198.3L479.7,201.6L482.7,206.4L479.8,205.8L478.8,202.6L470.3,198.4L462.7,198.3L460.5,197.8L458.5,199.9L450.3,195.7L449.8,194.6L399.6,192.5L372.4,190.5L360.8,189.5L364.4,145.5L364.7,145.5L366.4,124.7Z","Tennessee":"M629.5,334.1L628.8,330.1L632.7,330.8L654.7,328.2L674.1,327.1L677.5,326.4L690.6,325.6L705.5,324.0L705.8,323.6L740.5,319.0L740.5,324.3L737.4,325.8L735.8,330.3L732.5,329.9L726.2,335.1L725.4,333.0L723.2,334.8L720.1,340.3L715.7,342.1L711.8,346.1L707.0,346.8L703.1,350.7L702.2,354.5L698.7,355.4L698.9,360.6L676.0,363.4L644.7,366.2L629.6,367.6L624.8,368.0L591.9,370.3L593.6,369.6L595.1,365.6L594.5,360.3L597.6,356.4L598.0,353.0L600.5,351.6L600.8,347.4L603.9,341.6L603.4,336.1L604.4,336.0L605.6,335.9L607.6,335.5L629.5,334.1Z","Texas":"M387.8,336.7L419.6,338.3L417.8,381.5L419.2,381.3L423.1,385.7L425.3,385.1L431.0,385.5L432.1,389.8L435.8,389.7L439.7,391.8L443.3,391.6L444.8,393.5L447.1,391.5L450.5,392.6L452.0,395.0L454.6,395.4L455.9,398.5L459.1,395.7L463.4,397.4L465.0,399.3L467.1,398.5L468.5,401.3L473.2,396.3L474.4,398.9L478.4,398.9L482.2,400.5L483.6,402.5L487.2,399.1L491.1,398.0L492.9,399.2L497.2,397.0L498.2,398.2L502.8,398.3L504.0,396.4L508.7,398.5L510.6,401.0L517.6,403.4L519.5,405.4L523.1,404.3L525.7,405.2L526.0,417.0L526.4,439.7L530.6,444.5L530.8,449.4L536.2,458.2L536.6,462.9L534.8,468.7L533.0,471.0L533.7,474.0L532.4,476.4L534.0,480.6L529.6,488.5L531.4,490.7L528.2,490.9L518.3,494.1L514.7,492.4L514.0,488.8L511.5,491.4L509.7,490.8L508.8,494.0L510.8,495.3L511.2,499.4L507.7,503.8L501.9,509.2L490.2,515.1L489.0,514.1L485.5,515.6L485.4,514.2L480.6,515.2L478.4,512.4L477.0,513.0L482.1,518.7L478.4,520.5L474.9,519.4L474.3,523.3L469.9,527.4L465.3,534.9L462.2,542.8L460.1,542.2L459.5,545.1L461.8,544.4L460.6,550.1L459.1,550.4L458.9,553.6L460.7,555.4L461.2,562.0L463.3,564.3L463.8,568.6L465.5,572.3L459.4,574.5L456.9,571.6L452.2,570.4L445.9,570.5L440.7,566.8L436.6,566.3L433.6,563.3L429.5,562.3L426.8,559.4L425.2,552.7L421.7,548.6L422.3,545.3L420.8,541.6L421.4,538.5L419.1,535.0L417.1,534.5L413.9,531.2L413.0,527.2L410.2,523.5L406.2,520.3L404.5,513.6L402.6,511.7L400.3,506.3L399.7,501.9L397.4,498.6L393.5,495.6L392.6,493.6L388.9,491.7L386.3,486.8L378.0,485.2L372.9,485.1L368.7,483.1L367.6,485.3L363.0,485.8L359.2,490.1L356.6,497.3L355.4,497.3L352.4,501.5L349.3,501.4L344.8,497.6L333.3,491.2L331.3,488.1L326.9,484.9L324.3,478.4L324.6,472.7L321.8,467.8L321.4,463.8L319.6,461.0L312.6,456.6L309.2,451.1L306.2,449.0L303.3,444.3L298.8,441.5L296.2,435.3L293.6,433.8L291.7,431.1L292.5,428.9L358.3,435.1L360.0,412.9L362.1,390.5L366.3,335.2L366.9,335.3L387.8,336.7Z","Utah":"M227.8,195.1L245.8,197.9L242.3,220.0L275.0,224.8L269.2,266.1L266.5,284.9L266.4,287.3L262.9,313.1L237.7,309.3L176.6,298.9L197.7,189.6L227.8,195.1Z","Vermont":"M867.6,101.5L868.3,103.6L867.2,107.7L869.5,110.8L868.0,115.1L863.4,118.4L864.8,123.7L863.9,125.8L863.8,131.0L862.2,135.9L863.3,145.3L864.3,148.3L863.2,149.8L863.8,153.0L865.6,154.3L852.9,157.1L852.2,155.3L849.1,140.3L845.8,137.3L846.2,135.4L843.4,129.8L844.1,125.0L843.5,120.8L841.2,117.2L841.0,113.0L839.8,108.6L855.5,104.9L867.6,101.5Z","Virginia":"M842.1,267.8L844.6,266.9L843.2,271.1L841.2,272.9L840.9,278.2L839.1,287.1L836.5,289.4L835.0,286.6L835.0,279.6L837.7,270.1L842.1,267.8ZM831.9,271.4L832.3,271.3L831.5,271.5L831.9,271.4ZM786.3,246.2L796.3,251.8L797.3,247.3L799.9,247.1L802.1,248.6L802.7,251.8L806.4,252.2L809.0,253.8L810.9,256.7L810.2,260.4L808.3,261.8L807.7,265.2L808.9,267.3L813.2,265.7L814.8,269.0L821.0,269.2L823.2,271.6L828.5,273.6L827.7,280.1L830.6,284.5L828.8,287.3L829.1,290.1L831.6,291.3L829.8,294.4L825.5,291.7L824.9,293.1L828.5,294.9L837.1,293.7L841.0,301.4L778.2,313.9L764.6,316.1L752.7,317.7L740.5,319.0L705.8,323.6L714.7,319.2L715.5,316.6L718.7,315.3L718.6,313.4L721.0,311.6L720.7,309.9L726.6,305.7L732.3,298.8L732.3,300.7L735.2,304.1L738.4,305.4L740.6,305.0L743.4,301.6L746.1,303.5L750.3,301.6L757.5,296.1L758.3,297.3L761.0,294.9L760.4,290.9L761.7,287.1L764.3,283.3L765.0,279.1L767.6,274.5L768.0,269.2L771.4,271.7L774.3,272.2L775.8,270.1L778.0,261.6L780.4,263.1L786.6,252.8L786.3,246.2Z","Washington":"M183.9,28.9L177.8,55.2L171.5,83.9L170.8,85.6L171.9,89.8L171.2,93.6L140.2,86.2L137.9,87.1L131.8,86.1L124.8,86.3L120.5,87.5L116.0,86.9L114.3,85.3L105.3,86.2L105.2,84.6L100.8,82.2L96.6,81.4L89.2,82.9L82.2,78.4L83.3,71.8L82.7,68.9L80.2,65.8L78.7,65.6L76.2,65.5L74.4,62.3L72.0,60.7L69.4,61.3L67.2,58.6L68.6,55.9L71.0,55.0L69.4,49.7L70.9,37.7L70.1,35.8L71.0,27.3L69.2,23.3L69.9,16.8L72.8,13.2L75.0,16.0L80.1,20.4L84.1,21.5L87.7,23.7L91.8,23.8L93.1,26.2L96.5,27.0L97.5,32.3L99.3,32.5L97.8,38.8L97.2,44.7L98.8,44.6L98.8,39.3L100.5,34.7L104.3,30.5L102.9,28.0L103.8,24.5L103.5,20.3L104.9,17.7L104.9,14.3L102.8,13.2L101.4,10.1L102.6,8.0L183.9,28.9ZM99.0,22.6L101.1,22.3L99.6,26.4L97.8,24.2L99.0,22.6ZM96.3,15.6L98.7,13.3L99.8,17.3L98.3,20.0L95.3,18.2L96.3,15.6Z","West Virginia":"M746.0,226.7L749.3,246.9L766.5,243.9L768.3,255.3L771.3,252.6L773.9,248.3L776.2,248.6L778.9,244.8L784.1,245.5L784.3,242.9L787.0,242.5L788.2,240.6L791.4,242.1L794.2,241.5L797.3,247.3L796.3,251.8L786.3,246.2L786.6,252.8L780.4,263.1L778.0,261.6L775.8,270.1L774.3,272.2L771.4,271.7L768.0,269.2L767.6,274.5L765.0,279.1L764.3,283.3L761.7,287.1L760.4,290.9L761.0,294.9L758.3,297.3L757.5,296.1L750.3,301.6L746.1,303.5L743.4,301.6L740.6,305.0L738.4,305.4L735.2,304.1L732.3,300.7L732.3,298.8L730.0,298.8L726.3,296.7L725.1,294.3L721.9,291.4L719.3,287.5L718.8,280.8L723.2,279.7L723.4,276.7L725.3,275.2L724.0,271.9L726.3,266.1L729.3,269.1L730.7,266.8L729.9,264.4L731.4,259.8L733.3,259.6L734.8,256.2L736.8,257.4L738.8,256.1L744.1,247.9L744.4,239.6L745.8,234.0L745.3,230.6L743.7,228.3L746.0,226.7Z","Wisconsin":"M574.9,113.7L577.8,114.8L579.7,118.5L595.8,121.8L602.5,124.6L604.5,123.7L611.2,125.4L613.2,128.0L616.6,130.4L616.8,134.2L615.6,137.4L619.3,137.5L618.1,140.8L620.7,142.9L620.4,145.6L617.4,146.3L615.3,151.6L614.6,155.2L616.5,155.6L618.7,153.1L620.9,148.6L624.0,146.6L626.0,140.8L629.1,139.3L629.1,142.2L627.2,145.1L623.7,154.7L622.9,159.8L623.3,163.5L621.8,164.8L620.8,169.9L621.6,174.1L620.5,177.0L619.2,184.0L620.1,189.5L622.4,194.1L622.4,200.6L606.5,201.9L576.6,203.5L575.3,200.8L569.4,198.6L568.0,195.1L567.2,190.1L569.0,187.4L566.5,185.3L566.2,182.0L565.2,179.5L565.4,176.0L562.2,171.3L559.6,170.6L554.9,167.0L554.0,164.1L549.1,161.9L547.4,159.6L544.1,159.3L539.9,155.5L540.7,147.3L540.2,143.6L541.9,140.1L539.8,137.4L538.1,137.2L538.2,134.1L541.6,129.3L545.9,127.3L546.8,125.9L546.3,112.9L549.3,111.0L550.5,111.9L553.9,112.0L564.3,107.7L568.0,105.5L569.5,107.0L567.5,110.0L572.7,113.4L574.9,113.7Z","Wyoming":"M286.6,136.7L335.6,142.7L364.4,145.5L360.8,189.5L357.0,233.8L329.4,231.4L293.5,227.1L275.0,224.8L242.3,220.0L245.8,197.9L254.5,143.7L256.2,132.2L286.6,136.7Z"};
+
+/* =====================================================================
+ * 二、答案標準化與判定（純邏輯，不碰 DOM）
+ * ===================================================================== */
+/* 繁體 → 簡體對照：讓使用者輸入簡體字也能比對（兩邊都先轉換再比） */
+const T2S = {
+  '馬':'马','亞':'亚','納':'纳','薩':'萨','羅':'罗','達':'达','蘭':'兰','諸':'诸','賓':'宾',
+  '維':'维','華':'华','緬':'缅','內':'内','蘇':'苏','澤':'泽','紐':'纽','約':'约','奧':'奥',
+  '岡':'冈','懷':'怀','愛':'爱','猶':'犹','萊':'莱','來':'来','歷':'历','裡':'里','諾':'诺',
+  '喬':'乔','頓':'顿','島':'岛','爾':'尔','區':'区','倫':'伦'
+};
+
+/* 標準化：全形→半形(NFKC)、轉小寫、去除空白與常見標點、繁簡統一 */
+function norm(input) {
+  const s = String(input == null ? '' : input)
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\s　.,'’‘`´\-_–—·・、，。!！?？"“”]/g, '');
+  let out = '';
+  for (const ch of s) out += T2S[ch] || ch;
+  return out;
+}
+
+const HAS_CJK = /[㐀-鿿]/;
+
+/* 建立「標準化答案 → 州 id」查找表；同時偵測不同州之間的答案衝突 */
+const LOOKUP = new Map();
+const LOOKUP_CONFLICTS = [];
+function addKey(raw, id) {
+  const k = norm(raw);
+  if (!k) return;
+  const prev = LOOKUP.get(k);
+  if (prev && prev !== id) { LOOKUP_CONFLICTS.push(`${k}: ${prev} vs ${id}`); return; }
+  LOOKUP.set(k, id);
+}
+for (const st of STATE_DATA) {
+  const names = [st.en, st.id, st.zh, ...st.alias];
+  for (const n of names) {
+    addKey(n, st.id);
+    if (HAS_CJK.test(n)) {
+      // 「州」字可有可無（紐約 ↔ 紐約州）。單字（如 加）不拆，避免過度寬鬆。
+      if (n.endsWith('州')) { const stem = n.slice(0, -1); if (norm(stem).length >= 2) addKey(stem, st.id); }
+      else if (!n.endsWith('區') && !n.endsWith('府')) addKey(n + '州', st.id);
+    }
+  }
+}
+if (LOOKUP_CONFLICTS.length) console.error('別名衝突：', LOOKUP_CONFLICTS);
+
+const STATE_BY_ID = new Map(STATE_DATA.map(s => [s.id, s]));
+
+/* 判定：回傳 { empty, correct, matchedId } */
+function judge(raw, targetId) {
+  const key = norm(raw);
+  if (!key) return { empty: true, correct: false, matchedId: null };
+  const matchedId = LOOKUP.get(key) || null;
+  return { empty: false, correct: matchedId === targetId, matchedId };
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  const rnd = (n) => {
+    if (window.crypto && crypto.getRandomValues) {
+      const buf = new Uint32Array(1);
+      const limit = Math.floor(0x100000000 / n) * n;   // 避免取模偏差
+      do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+      return buf[0] % n;
+    }
+    return Math.floor(Math.random() * n);
+  };
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = rnd(i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function formatRate(correct, done) {
+  if (!done) return '—';
+  const v = Math.round((correct / done) * 1000) / 10;
+  return (Number.isInteger(v) ? String(v) : v.toFixed(1)) + '%';
+}
+
+/* =====================================================================
+ * 三、地圖幾何（由路徑資料算出重心與範圍，不依賴 DOM 是否可見）
+ * ===================================================================== */
+const GEOM = {};
+function analyzePath(d) {
+  const subs = d.split('M').slice(1).map(s =>
+    s.replace(/Z$/, '').split('L').map(p => { const [x, y] = p.split(','); return [+x, +y]; }));
+  const info = subs.map(pts => {
+    let a = 0, cx = 0, cy = 0, minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
+    for (let i = 0; i < pts.length; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length];
+      const c = x0 * y1 - x1 * y0;
+      a += c; cx += (x0 + x1) * c; cy += (y0 + y1) * c;
+      if (x0 < minx) minx = x0; if (x0 > maxx) maxx = x0;
+      if (y0 < miny) miny = y0; if (y0 > maxy) maxy = y0;
+    }
+    a /= 2;
+    if (a) { cx /= 6 * a; cy /= 6 * a; } else { cx = (minx + maxx) / 2; cy = (miny + maxy) / 2; }
+    return { area: Math.abs(a), cx, cy, minx, miny, maxx, maxy };
+  });
+  const big = Math.max(...info.map(i => i.area));
+  const main = info.filter(i => i.area >= big * 0.008);   // 忽略極小的離島碎片
+  const biggest = info.reduce((m, i) => (i.area > m.area ? i : m), info[0]);
+  const bb = {
+    x0: Math.min(...main.map(i => i.minx)), y0: Math.min(...main.map(i => i.miny)),
+    x1: Math.max(...main.map(i => i.maxx)), y1: Math.max(...main.map(i => i.maxy))
+  };
+  return { cx: biggest.cx, cy: biggest.cy, bbox: bb, size: Math.max(bb.x1 - bb.x0, bb.y1 - bb.y0) };
+}
+for (const st of STATE_DATA) GEOM[st.id] = analyzePath(MAP_PATHS[st.en]);
+
+/* =====================================================================
+ * 四、遊戲狀態
+ * ===================================================================== */
+const game = {
+  mode: 'full',        // 'full' = 全部 51 題（50 州＋DC）；'retry' = 錯題重練
+  order: [],           // 本輪出題順序（州 id）
+  index: 0,            // 目前題目在 order 中的位置
+  results: {},         // id -> { status: 'correct' | 'wrong', answer: '原始輸入' }
+  answered: false,     // 本題是否已作答（防止重複提交 / 重複計分）
+  finished: false
+};
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const $ = (id) => document.getElementById(id);
+const els = {
+  start: $('screen-start'), game: $('screen-game'), hero: $('hero-map'),
+  map: $('map'), states: $('states'), markers: $('markers'),
+  form: $('answer-form'), input: $('answer'), msg: $('input-msg'),
+  btnMain: $('btn-main'), btnSkip: $('btn-skip'), kbdTip: $('kbd-tip'),
+  feedback: $('feedback'), fbIcon: $('fb-icon'), fbTitle: $('fb-title'), fbL1: $('fb-line1'), fbL2: $('fb-line2'),
+  panelQuiz: $('panel-quiz'), panelResult: $('panel-result'), modeBadge: $('mode-badge'),
+  qNum: $('q-num'),
+  stQ: $('st-q'), stTotal: $('st-total'), stDone: $('st-done'), stCorrect: $('st-correct'), stWrong: $('st-wrong'), stRate: $('st-rate')
+};
+
+/* ---------- 建立地圖 ---------- */
+function buildMaps() {
+  for (const st of STATE_DATA) {
+    const d = MAP_PATHS[st.en];
+    const p = document.createElementNS(SVG_NS, 'path');
+    p.setAttribute('id', 'state-' + st.id);
+    p.setAttribute('class', 'state st-idle');
+    p.setAttribute('d', d);
+    p.dataset.id = st.id;
+    els.states.appendChild(p);
+
+    const h = document.createElementNS(SVG_NS, 'path');
+    h.setAttribute('d', d);
+    h.dataset.id = st.id;
+    els.hero.appendChild(h);
+  }
+}
+
+/* ---------- 狀態上色 ---------- */
+function setStateStatus(id, status) {   // status: idle | target | correct | wrong
+  const p = $('state-' + id);
+  p.setAttribute('class', 'state st-' + status);
+  p.dataset.status = status;
+  if (status === 'target') els.states.appendChild(p);   // 移到最上層，讓醒目外框不被鄰州蓋住
+}
+function resetMapColors() {
+  for (const st of STATE_DATA) setStateStatus(st.id, 'idle');
+  els.markers.replaceChildren();
+}
+function showMarker(id) {   // 小州（RI、DE、CT…）在地圖上很難點選與辨認，額外加一圈脈動外框
+  els.markers.replaceChildren();
+  const g = GEOM[id];
+  if (g.size >= 46) return;
+  const c = document.createElementNS(SVG_NS, 'circle');
+  c.setAttribute('class', 'ring');
+  c.setAttribute('cx', ((g.bbox.x0 + g.bbox.x1) / 2).toFixed(1));
+  c.setAttribute('cy', ((g.bbox.y0 + g.bbox.y1) / 2).toFixed(1));
+  c.setAttribute('r', Math.max(13, g.size / 2 + 9).toFixed(1));
+  els.markers.appendChild(c);
+}
+
+/* =====================================================================
+ * 五、地圖縮放 / 平移
+ * ===================================================================== */
+const MAP_W = 960, MAP_H = 600, MIN_W = 80;
+const VB = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+let viewAnim = null;
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function clampView(v) {
+  v.w = Math.min(MAP_W, Math.max(MIN_W, v.w));
+  v.h = v.w * MAP_H / MAP_W;
+  v.x = Math.min(MAP_W - v.w, Math.max(0, v.x));
+  v.y = Math.min(MAP_H - v.h, Math.max(0, v.y));
+  return v;
+}
+function applyView() {
+  els.map.setAttribute('viewBox', `${VB.x.toFixed(2)} ${VB.y.toFixed(2)} ${VB.w.toFixed(2)} ${VB.h.toFixed(2)}`);
+  els.map.classList.toggle('zoomed', VB.w < MAP_W - 1);
+}
+function animateView(to, ms = 380) {
+  if (viewAnim) cancelAnimationFrame(viewAnim);
+  to = clampView({ ...to });
+  if (reduceMotion || ms <= 0) { Object.assign(VB, to); applyView(); return; }
+  const from = { ...VB }, t0 = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / ms), e = ease(t);
+    VB.x = from.x + (to.x - from.x) * e; VB.y = from.y + (to.y - from.y) * e;
+    VB.w = from.w + (to.w - from.w) * e; VB.h = VB.w * MAP_H / MAP_W;
+    applyView();
+    viewAnim = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  viewAnim = requestAnimationFrame(step);
+}
+function zoomBy(factor, cx = VB.x + VB.w / 2, cy = VB.y + VB.h / 2, animate = true) {
+  const w = Math.min(MAP_W, Math.max(MIN_W, VB.w / factor));
+  const k = w / VB.w;
+  animateView({ x: cx - (cx - VB.x) * k, y: cy - (cy - VB.y) * k, w }, animate ? 220 : 0);
+}
+function resetView(animate = true) { animateView({ x: 0, y: 0, w: MAP_W }, animate ? 320 : 0); }
+function zoomToTarget() {
+  const id = game.order[game.index];
+  if (!id) return;
+  const { bbox } = GEOM[id];
+  const bw = bbox.x1 - bbox.x0, bh = bbox.y1 - bbox.y0;
+  const w = Math.max(Math.max(bw, bh) < 12 ? 90 : 170, bw * 2.6, bh * 2.6 * MAP_W / MAP_H);   // 極小的區域（DC）放得更大
+  animateView({ x: (bbox.x0 + bbox.x1) / 2 - w / 2, y: (bbox.y0 + bbox.y1) / 2 - (w * MAP_H / MAP_W) / 2, w });
+}
+
+/* 拖曳平移（放大後）與 Ctrl/⌘ + 滾輪（含觸控板雙指縮放）縮放 */
+let drag = null;
+els.map.addEventListener('pointerdown', (e) => {
+  if (VB.w >= MAP_W - 1) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (viewAnim) { cancelAnimationFrame(viewAnim); viewAnim = null; }
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, vx: VB.x, vy: VB.y };
+  els.map.setPointerCapture(e.pointerId);
+  els.map.classList.add('dragging');
+});
+els.map.addEventListener('pointermove', (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const k = VB.w / els.map.getBoundingClientRect().width;
+  VB.x = drag.vx - (e.clientX - drag.x) * k;
+  VB.y = drag.vy - (e.clientY - drag.y) * k;
+  clampView(VB); applyView();
+});
+const endDrag = (e) => { if (drag && e.pointerId === drag.id) { drag = null; els.map.classList.remove('dragging'); } };
+els.map.addEventListener('pointerup', endDrag);
+els.map.addEventListener('pointercancel', endDrag);
+els.map.addEventListener('wheel', (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  const r = els.map.getBoundingClientRect();
+  const cx = VB.x + (e.clientX - r.left) / r.width * VB.w;
+  const cy = VB.y + (e.clientY - r.top) / r.height * VB.h;
+  zoomBy(Math.exp(-e.deltaY * 0.01), cx, cy, false);
+}, { passive: false });
+
+$('btn-zoom-in').addEventListener('click', () => zoomBy(1.6));
+$('btn-zoom-out').addEventListener('click', () => zoomBy(1 / 1.6));
+$('btn-zoom-reset').addEventListener('click', () => resetView());
+$('btn-zoom-target').addEventListener('click', zoomToTarget);
+
+/* =====================================================================
+ * 六、畫面更新
+ * ===================================================================== */
+function counts() {
+  let correct = 0, wrong = 0;
+  for (const id of game.order) {
+    const r = game.results[id];
+    if (!r) continue;
+    if (r.status === 'correct') correct++; else wrong++;
+  }
+  return { correct, wrong, done: correct + wrong };
+}
+
+function updateStats() {
+  const c = counts(), total = game.order.length;
+  const qNo = game.finished ? total : Math.min(total, c.done + (game.answered ? 0 : 1));
+  els.stQ.textContent = qNo;
+  els.stTotal.textContent = total;
+  els.stDone.textContent = c.done;
+  els.stCorrect.textContent = c.correct;
+  els.stWrong.textContent = c.wrong;
+  els.stRate.textContent = formatRate(c.correct, c.done);
+  els.qNum.textContent = qNo;
+}
+
+function stateLabel(st) { return `${st.zh}（${st.en}，${st.id}）`; }
+
+function startRound(ids, mode) {
+  game.mode = mode;
+  game.order = shuffle(ids);
+  game.index = 0;
+  game.results = {};
+  game.answered = false;
+  game.finished = false;
+  els.modeBadge.hidden = mode !== 'retry';
+  resetMapColors();
+  els.panelResult.hidden = true;
+  els.panelQuiz.hidden = false;
+  showQuestion();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  els.input.focus();
+}
+
+function showQuestion() {
+  const id = game.order[game.index];
+  game.answered = false;
+  setStateStatus(id, 'target');
+  showMarker(id);
+  els.input.value = '';
+  els.input.readOnly = false;
+  els.msg.textContent = '';
+  els.feedback.hidden = true;
+  els.btnMain.textContent = '提交答案';
+  els.btnSkip.hidden = false;
+  els.kbdTip.hidden = false;
+  els.kbdTip.textContent = '按 Enter 提交；作答後再按 Enter 進入下一題。';
+  resetView(true);
+  updateStats();
+}
+
+function submitAnswer(raw, skipped = false) {
+  if (game.answered || game.finished) return;          // 一次作答制：同一題不可重複提交
+  const id = game.order[game.index];
+  const st = STATE_BY_ID.get(id);
+  let verdict;
+  if (skipped) verdict = { empty: false, correct: false, matchedId: null };
+  else {
+    verdict = judge(raw, id);
+    if (verdict.empty) { els.msg.textContent = '請先輸入答案，或按「不知道」。'; els.input.focus(); return; }
+  }
+  game.answered = true;
+  const answer = skipped ? '（跳過）' : raw.trim();
+  game.results[id] = { status: verdict.correct ? 'correct' : 'wrong', answer };
+  setStateStatus(id, verdict.correct ? 'correct' : 'wrong');
+  els.markers.replaceChildren();
+  els.msg.textContent = '';
+  els.input.readOnly = true;
+  els.btnSkip.hidden = true;
+
+  // 回饋
+  els.feedback.className = 'feedback ' + (verdict.correct ? 'ok' : 'bad');
+  els.fbIcon.textContent = verdict.correct ? '✓' : '✗';
+  els.fbTitle.textContent = verdict.correct ? '答對了！' : (skipped ? '這題先跳過' : '答錯了');
+  if (verdict.correct) {
+    els.fbL1.textContent = '';
+    const b = document.createElement('b'); b.textContent = stateLabel(st);
+    els.fbL1.append('這是 ', b);
+    els.fbL2.textContent = '';
+  } else {
+    els.fbL1.textContent = '';
+    const b = document.createElement('b'); b.textContent = stateLabel(st);
+    els.fbL1.append('正確答案：', b);
+    els.fbL2.textContent = '';
+    if (!skipped) {
+      const other = verdict.matchedId && STATE_BY_ID.get(verdict.matchedId);
+      els.fbL2.textContent = other
+        ? `你輸入的「${answer}」是 ${other.zh}（${other.en}），不是本題的州。`
+        : `你的答案：「${answer}」`;
+    }
+  }
+  els.feedback.hidden = false;
+
+  const last = game.index >= game.order.length - 1;
+  els.btnMain.textContent = last ? '查看成績 →' : '下一題 →';
+  els.kbdTip.textContent = last ? '按 Enter 查看成績。' : '按 Enter 進入下一題。';
+  updateStats();
+}
+
+function nextQuestion() {
+  if (!game.answered) return;
+  if (game.index >= game.order.length - 1) { finishRound(); return; }
+  game.index++;
+  showQuestion();
+  els.input.focus();
+}
+
+function finishRound() {
+  game.finished = true;
+  const c = counts();
+  updateStats();
+  resetView(true);
+  $('r-title').textContent = game.mode === 'retry' ? '錯題重練完成' : '測驗完成';
+  $('r-pct').textContent = formatRate(c.correct, c.done);
+  $('r-correct').textContent = c.correct;
+  $('r-wrong').textContent = c.wrong;
+  $('r-total').textContent = game.order.length;
+  $('r-wrong-n').textContent = c.wrong;
+
+  const list = $('r-wrong-list');
+  list.replaceChildren();
+  for (const id of game.order) {
+    const r = game.results[id];
+    if (r.status !== 'wrong') continue;
+    const st = STATE_BY_ID.get(id);
+    const li = document.createElement('li');
+    const name = document.createElement('span'); name.className = 'w-state';
+    name.textContent = st.zh;
+    const small = document.createElement('small'); small.textContent = `${st.en} · ${st.id}`;
+    name.appendChild(small);
+    const ans = document.createElement('span'); ans.className = 'w-ans';
+    ans.append('你的答案：');
+    const q = document.createElement('q'); q.textContent = r.answer;
+    ans.appendChild(q);
+    li.append(name, ans);
+    list.appendChild(li);
+  }
+  const perfect = c.wrong === 0;
+  $('r-perfect').hidden = !perfect;
+  $('r-wrong-wrap').hidden = perfect;
+  $('btn-retry').hidden = perfect;
+  $('btn-retry').textContent = `錯題重練（${c.wrong} 題）`;
+
+  els.panelQuiz.hidden = true;
+  els.panelResult.hidden = false;
+  els.panelResult.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+  $('btn-restart').focus({ preventScroll: true });
+}
+
+/* =====================================================================
+ * 七、事件
+ * ===================================================================== */
+/* 不依賴 <form> 的 submit 事件（部分預覽環境的沙箱會禁止表單送出），
+ * 直接處理按鈕點擊與 Enter 鍵。 */
+function onMainAction() {
+  if (game.answered) nextQuestion();
+  else submitAnswer(els.input.value);
+}
+els.form.addEventListener('submit', (e) => e.preventDefault());   // 保險：絕不讓表單真的送出
+els.btnMain.addEventListener('click', onMainAction);
+els.input.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if (e.isComposing) return;                      // 中文輸入法選字中的 Enter：不處理
+  if (!game.answered && e.keyCode === 229) return; // 部分瀏覽器在選字結束時的 Enter
+  if (e.repeat) return;                            // 長按 Enter 不連續跳題
+  onMainAction();
+});
+/* 作答後即使焦點不在輸入框（例如點了地圖），按 Enter 也能繼續 */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
+  if (els.game.hidden || !game.answered || game.finished) return;
+  const t = e.target;
+  if (t === els.input || (t && (t.tagName === 'BUTTON' || t.tagName === 'A'))) return;  // 這些已各自處理
+  e.preventDefault();
+  nextQuestion();
+});
+els.input.addEventListener('input', () => { els.msg.textContent = ''; });
+els.btnSkip.addEventListener('click', () => submitAnswer('', true));
+
+function restartFull() {
+  startRound(STATE_DATA.map(s => s.id), 'full');
+}
+$('btn-restart').addEventListener('click', restartFull);
+$('btn-restart-top').addEventListener('click', () => {
+  const inProgress = !game.finished && counts().done > 0;
+  if (inProgress && !window.confirm('目前的進度將會清除，確定要重新開始嗎？')) return;
+  restartFull();
+});
+$('btn-retry').addEventListener('click', () => {
+  const wrongIds = game.order.filter(id => game.results[id] && game.results[id].status === 'wrong');
+  if (wrongIds.length) startRound(wrongIds, 'retry');
+});
+
+let heroTimer = null;
+function startHeroAnimation() {
+  if (reduceMotion) return;
+  const paths = Array.from(els.hero.querySelectorAll('path'));
+  let last = null;
+  heroTimer = setInterval(() => {
+    if (last) last.classList.remove('hl');
+    last = paths[Math.floor(Math.random() * paths.length)];
+    last.classList.add('hl');
+  }, 900);
+}
+$('btn-start').addEventListener('click', () => {
+  clearInterval(heroTimer);
+  els.start.hidden = true;
+  els.game.hidden = false;
+  restartFull();
+});
+
+/* 啟動 */
+buildMaps();
+startHeroAnimation();
+</script>
+</body>
+</html>
